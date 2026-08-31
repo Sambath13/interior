@@ -43,10 +43,10 @@ export default function Login() {
                 />
               </svg>
             </div>
-            <h1 className="login-panel-title">Welcome back</h1>
+            <h1 className="login-panel-title">Welcome to TradeDesk</h1>
             <p className="login-panel-text">
-              Sign in to access your dashboard, manage your account, and stay
-              connected with everything that matters.
+              Sign in to access real-time markets, manage your portfolio, and
+              execute trades with confidence.
             </p>
           </div>
 
@@ -54,13 +54,13 @@ export default function Login() {
             <div className="login-feature">
               <div className="login-feature-icon">✓</div>
               <p className="login-feature-text">
-                Secure, encrypted sign-in experience
+                Real-time market data and charts
               </p>
             </div>
             <div className="login-feature">
               <div className="login-feature-icon">✓</div>
               <p className="login-feature-text">
-                Fast access to all your tools
+                Fast, secure order execution
               </p>
             </div>
           </div>
@@ -85,21 +85,21 @@ export default function Login() {
             </div>
             <h2 className="login-heading">Sign in</h2>
             <p className="login-subheading">
-              Enter your credentials to continue
+              Enter your trading credentials to continue
             </p>
           </div>
 
           <div className="login-header-desktop">
             <h2 className="login-heading">Sign in</h2>
             <p className="login-subheading">
-              Enter your credentials to continue
+              Enter your trading credentials to continue
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="login-form">
             <div>
               <label htmlFor="username" className="login-field-label">
-                Username
+                Trader ID or Email
               </label>
               <div className="login-input-wrapper">
                 <span className="login-input-icon">
@@ -122,7 +122,7 @@ export default function Login() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
+                  placeholder="Enter your trader ID or email"
                   required
                   autoComplete="username"
                   className="login-input"
@@ -212,7 +212,7 @@ export default function Login() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="login-checkbox"
                 />
-                <span className="login-remember-text">Remember me</span>
+                <span className="login-remember-text">Keep me signed in</span>
               </label>
               <a href="#" className="login-link">
                 Forgot password?
@@ -245,7 +245,7 @@ export default function Login() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                     />
                   </svg>
-                  Signing in...
+                  Connecting to markets...
                 </span>
               ) : (
                 "Sign in"
@@ -254,9 +254,9 @@ export default function Login() {
           </form>
 
           <p className="login-footer">
-            Don&apos;t have an account?{" "}
+            New to trading?{" "}
             <a href="#" className="login-link">
-              Create one
+              Create an account
             </a>
           </p>
         </div>
