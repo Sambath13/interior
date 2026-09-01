@@ -43,7 +43,7 @@ export default function Login() {
                 />
               </svg>
             </div>
-            <h1 className="login-panel-title">Welcome to TradeDesk</h1>
+            <h1 className="login-panel-title">Welcome to TradeFoot</h1>
             <p className="login-panel-text">
               Sign in to access real-time markets, manage your portfolio, and
               execute trades with confidence.
