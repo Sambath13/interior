@@ -1,20 +1,25 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import "./login.css";
 
 export default function Login() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const goToHome = () => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsLoading(false);
+    router.push("/home");
+  };
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    goToHome();
   };
 
   return (
@@ -123,7 +128,6 @@ export default function Login() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your trader ID or email"
-                  required
                   autoComplete="username"
                   className="login-input"
                 />
@@ -156,7 +160,6 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  required
                   autoComplete="current-password"
                   className="login-input login-input--password"
                 />
@@ -223,6 +226,7 @@ export default function Login() {
               type="submit"
               disabled={isLoading}
               className="login-submit"
+              onClick={goToHome}
             >
               {isLoading ? (
                 <span className="login-loading">
