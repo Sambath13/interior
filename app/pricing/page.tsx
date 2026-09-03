@@ -1,5 +1,5 @@
-import HomePage from "../../home_page/home_page";
+import Price from "../../pricing/price";
 
 export default function Page() {
-  return <HomePage />;
+  return <Price />;
 }

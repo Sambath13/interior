@@ -1,0 +1,324 @@
+.candle-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #fff;
+  color: #111;
+  color-scheme: light;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.candle-top,
+.candle-ohlc,
+.candle-ranges,
+.candle-footer {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.candle-top {
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 48px;
+  padding: 0 12px;
+  background: #fff;
+}
+
+.candle-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.candle-logo {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  text-decoration: none;
+}
+
+.candle-logo svg {
+  width: 100%;
+  height: 100%;
+}
+
+.candle-brand strong {
+  font-size: 15px;
+}
+
+.candle-brand em {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.candle-controls,
+.candle-top-actions,
+.candle-range-btns,
+.candle-toggles,
+.candle-footer-left,
+.candle-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.candle-controls select,
+.candle-controls button,
+.candle-top-actions button,
+.candle-ranges button,
+.candle-footer button,
+.candle-tools button {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #111;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.candle-upgrade,
+.candle-publish {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: #f0b429;
+  color: #111;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 0;
+}
+
+.candle-user {
+  position: relative;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #d1d5db;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.candle-user i {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 9px;
+  font-style: normal;
+  line-height: 14px;
+  text-align: center;
+}
+
+.candle-ohlc {
+  gap: 14px;
+  min-height: 32px;
+  padding: 0 12px 0 56px;
+  color: #4b5563;
+  font-size: 12px;
+  background: #fafafa;
+}
+
+.candle-ohlc b.is-down {
+  color: #dc2626;
+}
+
+.candle-ohlc b.is-up {
+  color: #16a34a;
+}
+
+.candle-body {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  min-height: 0;
+  flex: 1;
+}
+
+.candle-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 6px;
+  border-right: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  overflow: auto;
+}
+
+.candle-tools button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.candle-tools button.is-active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.candle-chart-wrap {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.candle-chart-el {
+  width: 100%;
+  height: 100%;
+}
+
+.candle-watermark {
+  pointer-events: none;
+  position: absolute;
+  left: 28px;
+  bottom: 56px;
+  z-index: 2;
+  color: rgba(17, 24, 39, 0.08);
+  font-size: 42px;
+  font-weight: 800;
+}
+
+.candle-hint {
+  pointer-events: none;
+  position: absolute;
+  left: 16px;
+  top: 10px;
+  z-index: 2;
+  margin: 0;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.candle-ticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding-left: 10px;
+  border-left: 1px solid #e5e7eb;
+  font-weight: 700;
+}
+
+.candle-ohlc i {
+  font-style: normal;
+  color: #111827;
+}
+
+.candle-float-nav {
+  position: absolute;
+  left: 50%;
+  bottom: 38px;
+  display: flex;
+  gap: 6px;
+  transform: translateX(-50%);
+}
+
+.candle-float-nav button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.candle-ranges {
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.candle-range-btns button.is-active,
+.candle-footer .is-trade {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.candle-footer {
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 0 12px;
+  border-bottom: 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.candle-footer label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .candle-page {
+    overflow-x: hidden;
+  }
+
+  .candle-top {
+    min-height: 44px;
+    padding: 0 8px;
+    gap: 0.45rem;
+  }
+
+  .candle-controls,
+  .candle-toggles,
+  .candle-footer-left button:nth-child(n + 3),
+  .candle-top-actions button,
+  .candle-tools,
+  .candle-hint {
+    display: none;
+  }
+
+  .candle-body {
+    grid-template-columns: 1fr;
+  }
+
+  .candle-ohlc {
+    gap: 10px;
+    padding: 0 10px;
+    overflow: auto;
+  }
+
+  .candle-ranges,
+  .candle-footer {
+    flex-wrap: wrap;
+    min-height: 0;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .candle-range-btns {
+    width: 100%;
+    overflow-x: auto;
+  }
+}

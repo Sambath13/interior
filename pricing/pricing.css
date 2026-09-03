@@ -1,0 +1,422 @@
+.pricing-page {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: #050505;
+  color: #fff;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.pricing-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: calc(100vh - 4.5rem);
+  padding: 1.25rem 1.5rem 4.5rem;
+  text-align: center;
+}
+
+.pricing-grid {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 20%, transparent 75%);
+}
+
+.pricing-glow {
+  pointer-events: none;
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: 46rem;
+  height: 22rem;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(240, 180, 41, 0.22) 0%,
+    rgba(240, 180, 41, 0.08) 38%,
+    transparent 70%
+  );
+}
+
+.pricing-crumb {
+  position: relative;
+  z-index: 1;
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 4.5rem;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.pricing-crumb a,
+.pricing-crumb span {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pricing-crumb a:hover {
+  color: #f0b429;
+}
+
+.pricing-kicker {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 0.85rem;
+  color: #9ca3af;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+}
+
+.pricing-badge {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  padding: 0.32rem 0.85rem;
+  border: 1px solid #c48a1a;
+  border-radius: 999px;
+  color: #f0b429;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.pricing-title {
+  position: relative;
+  z-index: 1;
+  margin: 1.15rem 0 0;
+  max-width: 16ch;
+  font-size: clamp(2.4rem, 5.4vw, 4.35rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+
+.pricing-title span {
+  display: block;
+  color: #d1d5db;
+  font-weight: 700;
+}
+
+.pricing-lead {
+  position: relative;
+  z-index: 1;
+  margin: 1.15rem 0 0;
+  max-width: 38rem;
+  color: #9ca3af;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.pricing-perks {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem 2rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: #d1d5db;
+  font-size: 0.95rem;
+}
+
+.pricing-perks li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.pricing-check {
+  display: inline-flex;
+  width: 1.05rem;
+  height: 1.05rem;
+  align-items: center;
+  justify-content: center;
+  color: #22c55e;
+}
+
+.pricing-check svg {
+  width: 100%;
+  height: 100%;
+}
+
+.pricing-x {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.pricing-toggle {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  margin-top: 2.4rem;
+  padding: 0.28rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(20, 20, 20, 0.9);
+}
+
+.pricing-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pricing-toggle-btn.is-active {
+  background: #f0b429;
+  color: #111;
+}
+
+.pricing-off {
+  padding: 0.16rem 0.42rem;
+  border-radius: 0.28rem;
+  background: #fff;
+  color: #111;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.pricing-plans {
+  position: relative;
+  z-index: 1;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.5rem 6rem;
+}
+
+.pricing-markets {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.pricing-markets button {
+  padding: 0.55rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pricing-markets button.is-active {
+  border-color: #f0b429;
+  background: rgba(240, 180, 41, 0.12);
+  color: #f0b429;
+}
+
+.pricing-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.pricing-card {
+  padding: 1.5rem 1.35rem 1.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.1rem;
+  background: #0d0d0d;
+}
+
+.pricing-card.is-featured {
+  border-color: rgba(240, 180, 41, 0.45);
+  background: linear-gradient(180deg, rgba(240, 180, 41, 0.08), #0d0d0d 28%);
+}
+
+.pricing-card-badge {
+  display: inline-flex;
+  margin: 0 0 0.7rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: #f0b429;
+  color: #111;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.pricing-card h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.pricing-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0.7rem 0 0;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.pricing-amount small {
+  color: #9ca3af;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.pricing-note {
+  margin: 0.35rem 0 1rem;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.pricing-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border-radius: 0.65rem;
+  background: #f0b429;
+  color: #111;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.pricing-card:not(.is-featured) .pricing-cta {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.pricing-group {
+  margin-top: 1.2rem;
+}
+
+.pricing-group h3 {
+  margin: 0 0 0.55rem;
+  color: #d1d5db;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pricing-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pricing-group li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  color: #e5e7eb;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.pricing-group li.is-off {
+  color: #6b7280;
+}
+
+.pricing-chat {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 30;
+  display: flex;
+  width: 3.15rem;
+  height: 3.15rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: #f0b429;
+  color: #111;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(240, 180, 41, 0.28);
+}
+
+.pricing-chat svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+@media (max-width: 980px) {
+  .pricing-page {
+    overflow-x: hidden;
+  }
+
+  .pricing-hero {
+    min-height: auto;
+    padding: 1rem 1rem 2.4rem;
+  }
+
+  .pricing-crumb {
+    margin-bottom: 1.6rem;
+    font-size: 0.75rem;
+  }
+
+  .pricing-title {
+    max-width: none;
+    font-size: clamp(1.7rem, 8vw, 2.6rem);
+  }
+
+  .pricing-lead {
+    font-size: 0.95rem;
+  }
+
+  .pricing-perks {
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .pricing-toggle {
+    width: 100%;
+    max-width: 22rem;
+  }
+
+  .pricing-toggle-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 0.6rem 0.7rem;
+    font-size: 0.82rem;
+  }
+
+  .pricing-markets {
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 0.4rem;
+  }
+
+  .pricing-grid-cards {
+    grid-template-columns: 1fr;
+    max-width: 28rem;
+    margin: 0 auto;
+  }
+
+  .pricing-plans {
+    padding: 0 1rem 4.5rem;
+  }
+
+  .pricing-chat {
+    right: 0.85rem;
+    bottom: 0.85rem;
+  }
+}

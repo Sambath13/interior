@@ -356,6 +356,20 @@
   }
 }
 
+@media (max-width: 640px) {
+  .login-page {
+    padding: 1.25rem 0.85rem;
+  }
+
+  .login-card {
+    border-radius: 1rem;
+  }
+
+  .login-form-section {
+    padding: 1.35rem 1.1rem 1.6rem;
+  }
+}
+
 @media (min-width: 640px) {
   .login-form-section {
     padding: 2.5rem;
