@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import HomeHeader from "../home_page/home_header";
-import "../home_page/home_page.css";
+import HomeHeader from "../home/home_header";
+import "../home/home_page.css";
 import "./pricing.css";
 
 type Billing = "monthly" | "annual";

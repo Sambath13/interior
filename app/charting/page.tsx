@@ -1,4 +1,4 @@
-import CandlePage from "../../candle_page/candle_page";
+import CandlePage from "./candle_page";
 
 export const metadata = {
   title: "NIFTY 50 — TradeFoot",
