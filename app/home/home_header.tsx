@@ -225,7 +225,6 @@ export default function HomeHeader({ current }: { current: PageId }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [regionOpen, setRegionOpen] = useState(false);
   const [region, setRegion] = useState(REGIONS[0]);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -240,7 +239,6 @@ export default function HomeHeader({ current }: { current: PageId }) {
   }, []);
 
   useEffect(() => {
-    setMobileOpen(false);
     setOpenMenu(null);
   }, [current]);
 
@@ -249,7 +247,7 @@ export default function HomeHeader({ current }: { current: PageId }) {
       <div className="home-header-inner">
         <Logo />
 
-        <nav className={`home-nav${mobileOpen ? " is-open" : ""}`} aria-label="Main">
+        <nav className="home-nav" aria-label="Main">
           {NAV_ITEMS.map((item) => {
             const isOpen = openMenu === item.id;
             const isActive = current === item.id || isOpen;
@@ -362,17 +360,6 @@ export default function HomeHeader({ current }: { current: PageId }) {
           <div className="home-avatar" aria-label="Account">
             G
           </div>
-
-          <button
-            type="button"
-            className="home-menu-toggle"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMobileOpen((open) => !open)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
         </div>
       </div>
     </header>
