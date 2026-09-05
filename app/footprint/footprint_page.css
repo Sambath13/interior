@@ -140,10 +140,25 @@
   .fp-page .candle-hint,
   .fp-page .candle-watermark,
   .fp-page .candle-tools,
-  .fp-buy,
-  .fp-sell,
   .fp-meta-extra {
     display: none;
+  }
+
+  .fp-page .candle-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .fp-page .candle-top-actions .fp-buy,
+  .fp-page .candle-top-actions .fp-sell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    height: 32px;
+    font-size: 13px;
   }
 
   .fp-body {
@@ -204,8 +219,11 @@
     display: none;
   }
 
-  .fp-page .candle-top-actions {
-    margin-left: auto;
+  .fp-page .candle-top-actions .fp-buy,
+  .fp-page .candle-top-actions .fp-sell {
+    min-width: 56px;
+    height: 34px;
+    font-size: 14px;
   }
 
   .fp-page .fp-controls select {
