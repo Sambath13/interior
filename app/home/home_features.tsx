@@ -83,7 +83,7 @@ export default function HomeFeatures() {
             </p>
           </article>
         </div>
-        <Link href="/features" className="home-feature-cta">
+        <Link href="#why-us" className="home-feature-cta">
           Explore all features
         </Link>
       </section>

@@ -13,7 +13,7 @@ export type PageId =
   | "resources";
 
 type DropdownItem = {
-  href: string;
+  href?: string;
   label: string;
   text: string;
   newTab?: boolean;
@@ -22,7 +22,7 @@ type DropdownItem = {
 type NavItem = {
   id: PageId;
   label: string;
-  href: string;
+  href?: string;
   items?: DropdownItem[];
 };
 
@@ -30,7 +30,6 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: "products",
     label: "Products",
-    href: "/products",
     items: [
       {
         href: "/charting",
@@ -39,7 +38,6 @@ const NAV_ITEMS: NavItem[] = [
         newTab: true,
       },
       {
-        href: "/products",
         label: "Orderflow",
         text: "Footprint, DOM, and volume tools",
       },
@@ -50,12 +48,10 @@ const NAV_ITEMS: NavItem[] = [
         newTab: true,
       },
       {
-        href: "/products",
         label: "Options Desk",
         text: "Chain, PCR, and strategy builder",
       },
       {
-        href: "/products",
         label: "Broker Trading",
         text: "One-click execution from charts",
       },
@@ -64,7 +60,6 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: "features",
     label: "Features",
-    href: "/features",
     items: [
       {
         href: "/footprint",
@@ -73,17 +68,14 @@ const NAV_ITEMS: NavItem[] = [
         newTab: true,
       },
       {
-        href: "/features",
         label: "Market Profile",
         text: "Session structure and TPO",
       },
       {
-        href: "/features",
         label: "Smart Alerts",
         text: "Price, volume, and script triggers",
       },
       {
-        href: "/features",
         label: "Lipi Scripts",
         text: "Custom indicators and strategies",
       },
@@ -92,20 +84,16 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: "trading",
     label: "Trading",
-    href: "/trading",
     items: [
       {
-        href: "/trading",
         label: "One-Click Trading",
         text: "Execute directly from the chart",
       },
       {
-        href: "/trading",
         label: "Broker Connections",
         text: "Zerodha, Dhan, Fyers, and more",
       },
       {
-        href: "/trading",
         label: "DOM & Order Book",
         text: "Full ladder beside your footprint",
       },
@@ -115,25 +103,20 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: "resources",
     label: "Resources",
-    href: "/resources",
     items: [
       {
-        href: "/resources",
         label: "Help Center",
         text: "Guides, FAQs, and support",
       },
       {
-        href: "/resources",
         label: "Documentation",
         text: "Platform and API reference",
       },
       {
-        href: "/resources",
         label: "Webinars",
         text: "Daily live market sessions",
       },
       {
-        href: "/resources",
         label: "Community",
         text: "Join 3M+ traders worldwide",
       },
@@ -267,43 +250,67 @@ export default function HomeHeader({ current }: { current: PageId }) {
         <Logo />
 
         <nav className={`home-nav${mobileOpen ? " is-open" : ""}`} aria-label="Main">
-          {NAV_ITEMS.map((item) => (
-            <div
-              key={item.id}
-              className="home-nav-item"
-              onMouseEnter={() => item.items && setOpenMenu(item.id)}
-              onMouseLeave={() => setOpenMenu(null)}
-            >
-              <Link
-                href={item.href}
-                className={`home-nav-link${current === item.id ? " is-active" : ""}`}
-                onClick={() => {
-                  if (item.items && mobileOpen) {
-                    setOpenMenu(openMenu === item.id ? null : item.id);
-                  }
-                }}
-              >
-                {item.label}
-                {item.items ? <Chevron open={openMenu === item.id} /> : null}
-              </Link>
-              {item.items && openMenu === item.id ? (
-                <div className="home-dropdown">
-                  {item.items.map((entry) => (
-                    <Link
-                      key={entry.label}
-                      href={entry.href}
-                      className="home-dropdown-link"
-                      target={entry.newTab ? "_blank" : undefined}
-                      rel={entry.newTab ? "noopener noreferrer" : undefined}
-                    >
-                      <span>{entry.label}</span>
-                      <small>{entry.text}</small>
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const isOpen = openMenu === item.id;
+            const isActive = current === item.id || isOpen;
+
+            return (
+              <div key={item.id} className="home-nav-item">
+                {item.items ? (
+                  <button
+                    type="button"
+                    className={`home-nav-link${isActive ? " is-active" : ""}`}
+                    aria-expanded={isOpen}
+                    aria-haspopup="menu"
+                    onClick={() => {
+                      setOpenMenu(isOpen ? null : item.id);
+                      setRegionOpen(false);
+                    }}
+                  >
+                    {item.label}
+                    <Chevron open={isOpen} />
+                  </button>
+                ) : (
+                  <Link
+                    href={item.href ?? "/home"}
+                    className={`home-nav-link${isActive ? " is-active" : ""}`}
+                    onClick={() => setOpenMenu(null)}
+                  >
+                    {item.label}
+                  </Link>
+                )}
+                {item.items && isOpen ? (
+                  <div className="home-dropdown" role="menu">
+                    {item.items.map((entry) =>
+                      entry.href ? (
+                        <Link
+                          key={entry.label}
+                          href={entry.href}
+                          className="home-dropdown-link"
+                          target={entry.newTab ? "_blank" : undefined}
+                          rel={entry.newTab ? "noopener noreferrer" : undefined}
+                          onClick={() => setOpenMenu(null)}
+                        >
+                          <span>{entry.label}</span>
+                          <small>{entry.text}</small>
+                        </Link>
+                      ) : (
+                        <button
+                          key={entry.label}
+                          type="button"
+                          className="home-dropdown-link"
+                          onClick={() => setOpenMenu(null)}
+                        >
+                          <span>{entry.label}</span>
+                          <small>{entry.text}</small>
+                        </button>
+                      )
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="home-header-actions">
