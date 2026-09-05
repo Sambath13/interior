@@ -31,6 +31,12 @@ const PAGE_CONTENT: Record<
         text: "Footprint charts, volume profile, delta, DOM, and time & sales in a single tape.",
       },
       {
+        title: "Footprint",
+        text: "Bid/ask volume at every price, imbalance cells, and delta — the same tape professionals read.",
+        href: "/footprint",
+        newTab: true,
+      },
+      {
         title: "Options Desk",
         text: "Live chain, OI buildup, PCR, and strategy builder for index and stock options.",
       },
@@ -47,6 +53,8 @@ const PAGE_CONTENT: Record<
       {
         title: "Footprint Charts",
         text: "Decode bid/ask imbalances and volume delta at every price level.",
+        href: "/footprint",
+        newTab: true,
       },
       {
         title: "Market Profile",

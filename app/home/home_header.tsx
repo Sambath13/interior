@@ -44,6 +44,12 @@ const NAV_ITEMS: NavItem[] = [
         text: "Footprint, DOM, and volume tools",
       },
       {
+        href: "/footprint",
+        label: "Footprint",
+        text: "Volume and delta at every price",
+        newTab: true,
+      },
+      {
         href: "/products",
         label: "Options Desk",
         text: "Chain, PCR, and strategy builder",
@@ -61,9 +67,10 @@ const NAV_ITEMS: NavItem[] = [
     href: "/features",
     items: [
       {
-        href: "/features",
+        href: "/footprint",
         label: "Footprint Charts",
         text: "See volume at every price",
+        newTab: true,
       },
       {
         href: "/features",
