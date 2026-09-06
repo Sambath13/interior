@@ -222,6 +222,22 @@
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
 }
 
+.login-input--error {
+  border-color: rgba(248, 113, 113, 0.7);
+}
+
+.login-input--error:focus {
+  border-color: rgba(248, 113, 113, 0.9);
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.2);
+}
+
+.login-field-error {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #fca5a5;
+}
+
 .login-toggle-password {
   position: absolute;
   inset-block: 0;

@@ -16,6 +16,14 @@ export const metadata: Metadata = {
   title: "TradeFoot",
   description:
     "TradeFoot is a unified orderflow charting and trading platform for futures, forex, stocks, and crypto.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

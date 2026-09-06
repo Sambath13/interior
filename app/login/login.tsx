@@ -1,8 +1,55 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import "./login.css";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const TRADER_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9._-]{3,31}$/;
+const PASSWORD_LETTER = /[A-Za-z]/;
+const PASSWORD_NUMBER = /\d/;
+
+type FieldErrors = {
+  username: string;
+  password: string;
+};
+
+function validateUsername(value: string): string {
+  const username = value.trim();
+
+  if (!username) {
+    return "Enter your trader ID or email.";
+  }
+
+  if (username.includes("@")) {
+    if (!EMAIL_PATTERN.test(username)) {
+      return "Enter a valid email address.";
+    }
+    return "";
+  }
+
+  if (!TRADER_ID_PATTERN.test(username)) {
+    return "Trader ID must be 4–32 characters and start with a letter.";
+  }
+
+  return "";
+}
+
+function validatePassword(value: string): string {
+  if (!value) {
+    return "Enter your password.";
+  }
+
+  if (value.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+
+  if (!PASSWORD_LETTER.test(value) || !PASSWORD_NUMBER.test(value)) {
+    return "Password must include at least one letter and one number.";
+  }
+
+  return "";
+}
 
 export default function Login() {
   const router = useRouter();
@@ -11,14 +58,57 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({
+    username: "",
+    password: "",
+  });
+  const [touched, setTouched] = useState({
+    username: false,
+    password: false,
+  });
 
   const goToHome = () => {
     setIsLoading(true);
     router.push("/home");
   };
 
+  const handleUsernameChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setUsername(value);
+    if (touched.username || errors.username) {
+      setErrors((current) => ({
+        ...current,
+        username: validateUsername(value),
+      }));
+    }
+  };
+
+  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+    if (touched.password || errors.password) {
+      setErrors((current) => ({
+        ...current,
+        password: validatePassword(value),
+      }));
+    }
+  };
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const nextErrors = {
+      username: validateUsername(username),
+      password: validatePassword(password),
+    };
+
+    setTouched({ username: true, password: true });
+    setErrors(nextErrors);
+
+    if (nextErrors.username || nextErrors.password) {
+      return;
+    }
+
     goToHome();
   };
 
@@ -101,7 +191,7 @@ export default function Login() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="login-form">
+          <form onSubmit={handleSubmit} className="login-form" noValidate>
             <div>
               <label htmlFor="username" className="login-field-label">
                 Trader ID or Email
@@ -126,12 +216,26 @@ export default function Login() {
                   id="username"
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={handleUsernameChange}
+                  onBlur={() => {
+                    setTouched((current) => ({ ...current, username: true }));
+                    setErrors((current) => ({
+                      ...current,
+                      username: validateUsername(username),
+                    }));
+                  }}
                   placeholder="Enter your trader ID or email"
                   autoComplete="username"
-                  className="login-input"
+                  aria-invalid={Boolean(errors.username)}
+                  aria-describedby={errors.username ? "username-error" : undefined}
+                  className={`login-input${errors.username ? " login-input--error" : ""}`}
                 />
               </div>
+              {errors.username ? (
+                <p id="username-error" className="login-field-error" role="alert">
+                  {errors.username}
+                </p>
+              ) : null}
             </div>
 
             <div>
@@ -158,10 +262,21 @@ export default function Login() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
+                  onBlur={() => {
+                    setTouched((current) => ({ ...current, password: true }));
+                    setErrors((current) => ({
+                      ...current,
+                      password: validatePassword(password),
+                    }));
+                  }}
                   placeholder="Enter your password"
                   autoComplete="current-password"
-                  className="login-input login-input--password"
+                  aria-invalid={Boolean(errors.password)}
+                  aria-describedby={errors.password ? "password-error" : undefined}
+                  className={`login-input login-input--password${
+                    errors.password ? " login-input--error" : ""
+                  }`}
                 />
                 <button
                   type="button"
@@ -205,6 +320,11 @@ export default function Login() {
                   )}
                 </button>
               </div>
+              {errors.password ? (
+                <p id="password-error" className="login-field-error" role="alert">
+                  {errors.password}
+                </p>
+              ) : null}
             </div>
 
             <div className="login-options">
@@ -222,12 +342,7 @@ export default function Login() {
               </a>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="login-submit"
-              onClick={goToHome}
-            >
+            <button type="submit" disabled={isLoading} className="login-submit">
               {isLoading ? (
                 <span className="login-loading">
                   <svg
