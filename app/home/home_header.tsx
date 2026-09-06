@@ -225,6 +225,7 @@ export default function HomeHeader({ current }: { current: PageId }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [regionOpen, setRegionOpen] = useState(false);
   const [region, setRegion] = useState(REGIONS[0]);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -240,14 +241,32 @@ export default function HomeHeader({ current }: { current: PageId }) {
 
   useEffect(() => {
     setOpenMenu(null);
+    setMobileOpen(false);
   }, [current]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [mobileOpen]);
+
+  function closeDrawer() {
+    setMobileOpen(false);
+    setOpenMenu(null);
+  }
 
   return (
     <header className="home-header" ref={headerRef}>
       <div className="home-header-inner">
         <Logo />
 
-        <nav className="home-nav" aria-label="Main">
+        <nav className={`home-nav${mobileOpen ? " is-open" : ""}`} aria-label="Main">
           {NAV_ITEMS.map((item) => {
             const isOpen = openMenu === item.id;
             const isActive = current === item.id || isOpen;
@@ -272,7 +291,7 @@ export default function HomeHeader({ current }: { current: PageId }) {
                   <Link
                     href={item.href ?? "/home"}
                     className={`home-nav-link${isActive ? " is-active" : ""}`}
-                    onClick={() => setOpenMenu(null)}
+                    onClick={closeDrawer}
                   >
                     {item.label}
                   </Link>
@@ -287,7 +306,7 @@ export default function HomeHeader({ current }: { current: PageId }) {
                           className="home-dropdown-link"
                           target={entry.newTab ? "_blank" : undefined}
                           rel={entry.newTab ? "noopener noreferrer" : undefined}
-                          onClick={() => setOpenMenu(null)}
+                          onClick={closeDrawer}
                         >
                           <span>{entry.label}</span>
                           <small>{entry.text}</small>
@@ -360,8 +379,33 @@ export default function HomeHeader({ current }: { current: PageId }) {
           <div className="home-avatar" aria-label="Account">
             G
           </div>
+
+          <button
+            type="button"
+            className={`home-menu-toggle${mobileOpen ? " is-open" : ""}`}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            onClick={() => {
+              setMobileOpen((open) => !open);
+              setOpenMenu(null);
+              setRegionOpen(false);
+            }}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
       </div>
+
+      {mobileOpen ? (
+        <button
+          type="button"
+          className="home-drawer-backdrop"
+          aria-label="Close menu"
+          onClick={closeDrawer}
+        />
+      ) : null}
     </header>
   );
 }
