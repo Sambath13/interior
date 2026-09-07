@@ -192,13 +192,23 @@ export default function CandlePage() {
   const [clock, setClock] = useState("");
   const [hover, setHover] = useState<Candle | null>(null);
   const chartEl = useRef<HTMLDivElement>(null);
+  const priceAxisEl = useRef<HTMLDivElement>(null);
   const chartApi = useRef<IChartApi | null>(null);
   const seriesApi = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const candlesRef = useRef<Candle[]>([]);
+  const priceLockedRef = useRef(false);
+  const priceDragRef = useRef<{
+    startY: number;
+    from: number;
+    to: number;
+    grab: number;
+  } | null>(null);
 
   const candles = useMemo(
     () => barsForTimeframe(baseBars, timeframe),
     [baseBars, timeframe]
   );
+  candlesRef.current = candles;
   const last = candles[candles.length - 1];
   const prev = candles[candles.length - 2] ?? last;
   const shown = hover ?? last;
@@ -207,15 +217,108 @@ export default function CandlePage() {
   const down = change < 0;
   const visibleCount = visibleBarsFor(range, timeframe, candles.length);
 
+  const readPriceRange = useCallback(() => {
+    const chart = chartApi.current;
+    const series = seriesApi.current;
+    const node = chartEl.current;
+    if (!chart || !series || !node) return null;
+    const visible = chart.priceScale("right").getVisibleRange();
+    if (visible && visible.to > visible.from) return visible;
+    const top = series.coordinateToPrice(0);
+    const bottom = series.coordinateToPrice(Math.max(1, node.clientHeight - 26));
+    if (top == null || bottom == null) return null;
+    return { from: Math.min(top, bottom), to: Math.max(top, bottom) };
+  }, []);
+
+  const applyPriceRange = useCallback((from: number, to: number, lock: boolean) => {
+    const chart = chartApi.current;
+    if (!chart || !(to > from)) return;
+    priceLockedRef.current = lock;
+    const scale = chart.priceScale("right");
+    scale.setAutoScale(false);
+    scale.setVisibleRange({ from, to });
+  }, []);
+
+  const fitPriceToCandles = useCallback(() => {
+    const chart = chartApi.current;
+    const bars = candlesRef.current;
+    if (!chart || !bars.length) return;
+    const logical = chart.timeScale().getVisibleLogicalRange();
+    if (!logical) return;
+    const from = Math.max(0, Math.floor(logical.from));
+    const to = Math.min(bars.length - 1, Math.ceil(logical.to));
+    if (to < from) return;
+    let high = -Infinity;
+    let low = Infinity;
+    for (let index = from; index <= to; index += 1) {
+      high = Math.max(high, bars[index].high);
+      low = Math.min(low, bars[index].low);
+    }
+    if (!Number.isFinite(high) || !Number.isFinite(low)) return;
+    const pad = Math.max((high - low) * 0.06, 8);
+    applyPriceRange(low - pad, high + pad, false);
+  }, [applyPriceRange]);
+
+  const zoomPriceAxis = useCallback(
+    (factor: number, clientY?: number) => {
+      const range = readPriceRange();
+      const node = chartEl.current;
+      const series = seriesApi.current;
+      if (!range || !node) return;
+      let anchor = (range.from + range.to) / 2;
+      if (clientY != null && series) {
+        const price = series.coordinateToPrice(clientY - node.getBoundingClientRect().top);
+        if (price != null) anchor = price;
+      }
+      const span = Math.max(12, (range.to - range.from) * factor);
+      const t = Math.min(1, Math.max(0, (anchor - range.from) / (range.to - range.from || 1)));
+      const from = anchor - t * span;
+      applyPriceRange(from, from + span, true);
+    },
+    [applyPriceRange, readPriceRange]
+  );
+
+  const startPriceDrag = useCallback(
+    (clientY: number) => {
+      const range = readPriceRange();
+      const node = chartEl.current;
+      const series = seriesApi.current;
+      if (!range || !node) return;
+      const price = series?.coordinateToPrice(clientY - node.getBoundingClientRect().top);
+      priceDragRef.current = {
+        startY: clientY,
+        from: range.from,
+        to: range.to,
+        grab: price ?? (range.from + range.to) / 2,
+      };
+    },
+    [readPriceRange]
+  );
+
+  const movePriceDrag = useCallback(
+    (clientY: number) => {
+      const drag = priceDragRef.current;
+      if (!drag) return;
+      const factor = Math.exp((drag.startY - clientY) / 160);
+      const span = Math.max(12, (drag.to - drag.from) * factor);
+      const t = Math.min(1, Math.max(0, (drag.grab - drag.from) / (drag.to - drag.from || 1)));
+      const from = drag.grab - t * span;
+      applyPriceRange(from, from + span, true);
+    },
+    [applyPriceRange]
+  );
+
   const applyVisibleRange = useCallback(() => {
     const chart = chartApi.current;
     if (!chart) return;
+    priceLockedRef.current = false;
     const total = candles.length;
     chart.timeScale().setVisibleLogicalRange({
       from: Math.max(0, total - visibleCount),
       to: total + 4,
     });
-  }, [candles.length, visibleCount]);
+    requestAnimationFrame(fitPriceToCandles);
+  }, [candles.length, fitPriceToCandles, visibleCount]);
 
   const zoom = useCallback((factor: number) => {
     const chart = chartApi.current;
@@ -240,6 +343,18 @@ export default function CandlePage() {
       to: logical.to + bars,
     });
   }, []);
+
+  useEffect(() => {
+    const axis = priceAxisEl.current;
+    if (!axis) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      zoomPriceAxis(event.deltaY > 0 ? 1.15 : 0.85, event.clientY);
+    };
+    axis.addEventListener("wheel", onWheel, { passive: false });
+    return () => axis.removeEventListener("wheel", onWheel);
+  }, [zoomPriceAxis]);
 
   useEffect(() => {
     document.title = "NIFTY 50 — TradeFoot";
@@ -271,6 +386,7 @@ export default function CandlePage() {
         CrosshairMode,
       } = await import("lightweight-charts");
       if (disposed || !chartEl.current) return;
+      priceLockedRef.current = false;
 
       chart = createChart(chartEl.current, {
         autoSize: true,
@@ -291,7 +407,11 @@ export default function CandlePage() {
         },
         rightPriceScale: {
           borderColor: "#e5e7eb",
-          scaleMargins: { top: 0.08, bottom: 0.08 },
+          scaleMargins: { top: 0.04, bottom: 0.04 },
+          autoScale: true,
+          alignLabels: true,
+          ticksVisible: true,
+          minimumWidth: 76,
         },
         timeScale: {
           borderColor: "#e5e7eb",
@@ -308,8 +428,8 @@ export default function CandlePage() {
         handleScale: {
           mouseWheel: true,
           pinch: true,
-          axisPressedMouseMove: true,
-          axisDoubleClickReset: true,
+          axisPressedMouseMove: { time: true, price: false },
+          axisDoubleClickReset: { time: true, price: false },
         },
         localization: {
           locale: "en-IN",
@@ -335,6 +455,11 @@ export default function CandlePage() {
       chart.timeScale().setVisibleLogicalRange({
         from: Math.max(0, candles.length - visibleCount),
         to: candles.length + 4,
+      });
+      requestAnimationFrame(fitPriceToCandles);
+
+      chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+        if (!priceLockedRef.current) fitPriceToCandles();
       });
 
       chart.subscribeCrosshairMove((param) => {
@@ -486,7 +611,29 @@ export default function CandlePage() {
         <div className="candle-chart-wrap">
           <div className="candle-watermark">TradeFoot</div>
           <div ref={chartEl} className="candle-chart-el" />
-          <p className="candle-hint">Scroll to zoom candles · Drag to pan</p>
+          <div
+            ref={priceAxisEl}
+            className="candle-price-axis"
+            aria-label="Price scale zoom"
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              startPriceDrag(event.clientY);
+            }}
+            onPointerMove={(event) => {
+              if (priceDragRef.current) movePriceDrag(event.clientY);
+            }}
+            onPointerUp={() => {
+              priceDragRef.current = null;
+            }}
+            onPointerCancel={() => {
+              priceDragRef.current = null;
+            }}
+            onDoubleClick={() => {
+              priceLockedRef.current = false;
+              fitPriceToCandles();
+            }}
+          />
+          <p className="candle-hint">Scroll candles to zoom time · Drag right scale to zoom price</p>
           <div className="candle-float-nav">
             <button type="button" onClick={() => pan(-18)} aria-label="Older candles">
               ‹

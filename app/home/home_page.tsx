@@ -5,6 +5,9 @@ import { FormEvent, useState } from "react";
 import HomeHeader from "./home_header";
 import WhyUs from "./why_us";
 import HomeFeatures from "./home_features";
+import HomeNewsletter from "./home_newsletter";
+import HomeFooter from "./home_footer";
+import ChatWidget from "./chat_widget";
 import "./home_page.css";
 
 function Hero() {
@@ -71,6 +74,9 @@ export default function HomePage() {
       <Hero />
       <WhyUs />
       <HomeFeatures />
+      <HomeNewsletter />
+      <HomeFooter />
+      <ChatWidget />
     </div>
   );
 }

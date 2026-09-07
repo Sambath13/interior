@@ -192,6 +192,17 @@
   height: 100%;
 }
 
+.candle-price-axis {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 4;
+  width: 76px;
+  height: calc(100% - 26px);
+  cursor: ns-resize;
+  touch-action: none;
+}
+
 .candle-watermark {
   pointer-events: none;
   position: absolute;
@@ -301,6 +312,10 @@
 
   .candle-body {
     grid-template-columns: 1fr;
+  }
+
+  .candle-price-axis {
+    width: 58px;
   }
 
   .candle-ohlc {
