@@ -39,8 +39,8 @@
   --fp-border: #e2e8f0;
   --fp-text: #0f172a;
   --fp-text-muted: #64748b;
-  --fp-accent: #d97706;
-  --fp-poc-box: #d97706;
+  --fp-accent: #eab308;
+  --fp-poc-box: #eab308;
   --fp-green: #16a34a;
   --fp-red: #dc2626;
   --fp-canvas-bg: #ffffff;
@@ -145,6 +145,48 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.fp-checkbox-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--fp-surface-hover);
+  border: 1px solid var(--fp-border);
+  border-radius: 6px;
+  color: var(--fp-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.fp-checkbox-pill:hover {
+  border-color: var(--fp-accent);
+  color: var(--fp-accent);
+}
+
+.fp-checkbox-pill input[type="checkbox"] {
+  accent-color: var(--fp-accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.fp-checkbox-pill.is-active {
+  background: rgba(240, 180, 41, 0.12);
+  border-color: var(--fp-accent);
+  color: var(--fp-accent);
+}
+
+.fp-footer-check {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
 }
 
 .fp-header-right {

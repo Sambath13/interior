@@ -100,7 +100,7 @@ function generateFootprintData(instrument = INSTRUMENTS[0]): FootprintBar[] {
       const distFromPoc = Math.abs(p - pocPrice) / tick;
       const gaussian = Math.exp(-0.18 * distFromPoc);
       const totalVol = Math.floor((120 + rand() * 1100) * gaussian + 30);
-      
+
       let bid = Math.floor(totalVol * (0.35 + rand() * 0.3));
       let ask = totalVol - bid;
 
@@ -153,7 +153,7 @@ export default function FootprintPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>("5m");
   const [tool, setTool] = useState("cross");
   const [imbalanceRatio, setImbalanceRatio] = useState(3.0); // 300%
-  const [showDelta, setShowDelta] = useState(true);
+  const [showDelta, setShowDelta] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [clock, setClock] = useState("");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -261,14 +261,15 @@ export default function FootprintPage() {
         wick: isDark ? "#4b5563" : "#94a3b8",
         upBorder: isDark ? "#22c55e" : "#16a34a",
         downBorder: isDark ? "#ef4444" : "#dc2626",
-        pocBox: isDark ? "#facc15" : "#d97706",
+        pocBox: isDark ? "#facc15" : "#eab308",
+        pocFill: isDark ? "rgba(250, 204, 21, 0.12)" : "rgba(234, 179, 8, 0.14)",
         numNormal: isDark ? "#ffffff" : "#0f172a",
         numAskImbalance: isDark ? "#22c55e" : "#15803d",
         numBidImbalance: isDark ? "#ef4444" : "#b91c1c",
-        numZero: isDark ? "#ef4444" : "#dc2626",
+        numZero: isDark ? "#94a3b8" : "#94a3b8",
         multiplierX: isDark ? "#64748b" : "#94a3b8",
         deltaBarBg: isDark ? "#11141e" : "#f1f5f9",
-        crosshair: isDark ? "rgba(250, 204, 21, 0.45)" : "rgba(217, 119, 6, 0.5)",
+        crosshair: isDark ? "rgba(250, 204, 21, 0.45)" : "rgba(234, 179, 8, 0.5)",
       };
 
       // Fill background
@@ -335,7 +336,7 @@ export default function FootprintPage() {
 
       // Developing POC / Session line across the chart
       ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = isDark ? "rgba(34, 197, 94, 0.35)" : "rgba(22, 163, 74, 0.35)";
+      ctx.strokeStyle = isDark ? "rgba(250, 204, 21, 0.45)" : "rgba(234, 179, 8, 0.55)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       visibleBars.forEach((bar, offset) => {
@@ -349,24 +350,18 @@ export default function FootprintPage() {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Render Each Footprint Bar (MotiveWave Format)
+      // Render Each Footprint Bar (Centered GoCharting / MotiveWave Design)
       visibleBars.forEach((bar, offset) => {
         const idx = Math.max(0, Math.floor(view.from)) + offset;
         const x = xAt(idx);
         const isUp = bar.close >= bar.open;
         const candleColor = isUp ? colors.upBorder : colors.downBorder;
-        const bodyLeft = x - barW * 0.44;
-        const bodyWidth = barW * 0.88;
 
-        // 1. Center Wick line
-        ctx.strokeStyle = colors.wick;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(x, yAt(bar.high));
-        ctx.lineTo(x, yAt(bar.low));
-        ctx.stroke();
+        // Centered column width and bounds
+        const bodyWidth = Math.max(28, Math.min(barW * 0.94, barW - 4));
+        const bodyLeft = x - bodyWidth / 2;
 
-        // 2. Identify Point of Control (POC)
+        // Identify Point of Control (POC) and Max Level Volume for scaling
         let pocLevel = bar.levels[0];
         let maxVolume = 0;
         for (const lvl of bar.levels) {
@@ -377,42 +372,71 @@ export default function FootprintPage() {
           }
         }
 
-        // 3. Render Each Bid x Ask Level
-        const levelCount = bar.levels.length;
-        const rowHeight = Math.max(12, Math.min(22, plotH / Math.max(1, (maxP - minP) / tick)));
+        // 3. Render Each Footprint Level Row with Volume Background & Yellow POC Box
+        const rowHeight = Math.max(13, Math.min(22, plotH / Math.max(1, (maxP - minP) / tick)));
 
         bar.levels.forEach((lvl, lvlIdx) => {
           const y = yAt(lvl.price);
           const cellTop = y - rowHeight / 2;
+          const totalVol = lvl.bid + lvl.ask;
+          const volFraction = maxVolume > 0 ? Math.min(1, totalVol / maxVolume) : 0.5;
+          const bgBarWidth = Math.max(8, bodyWidth * (0.35 + volFraction * 0.65));
 
-          // Diagonal Imbalance Calculation
-          // Next higher level ask compared to current bid, or current ask compared to lower bid
           const lowerLvl = bar.levels[lvlIdx + 1];
           const higherLvl = bar.levels[lvlIdx - 1];
-
-          const isAskImbalanced = lowerLvl ? lvl.ask >= lowerLvl.bid * imbalanceRatio && lvl.ask > 50 : false;
-          const isBidImbalanced = higherLvl ? lvl.bid >= higherLvl.ask * imbalanceRatio && lvl.bid > 50 : false;
+          const isAskImbalanced = lowerLvl ? lvl.ask >= lowerLvl.bid * imbalanceRatio && lvl.ask > 40 : false;
+          const isBidImbalanced = higherLvl ? lvl.bid >= higherLvl.ask * imbalanceRatio && lvl.bid > 40 : false;
           const isPoc = lvl.price === pocLevel.price;
+          const askDominant = lvl.ask >= lvl.bid;
 
-          // POC Box outline (MotiveWave Gold Box)
-          if (isPoc && bodyWidth >= 28) {
-            ctx.strokeStyle = colors.pocBox;
-            ctx.lineWidth = 1.8;
-            ctx.strokeRect(bodyLeft + 1, cellTop + 1, bodyWidth - 2, rowHeight - 2);
+          // (A) Volume Profile horizontal background shading
+          if (isDark) {
+            if (isAskImbalanced) {
+              ctx.fillStyle = "rgba(34, 197, 94, 0.45)";
+            } else if (isBidImbalanced) {
+              ctx.fillStyle = "rgba(239, 68, 68, 0.45)";
+            } else if (askDominant) {
+              ctx.fillStyle = "rgba(34, 197, 94, 0.20)";
+            } else {
+              ctx.fillStyle = "rgba(239, 68, 68, 0.20)";
+            }
+          } else {
+            if (isAskImbalanced) {
+              ctx.fillStyle = "#86efac";
+            } else if (isBidImbalanced) {
+              ctx.fillStyle = "#fca5a5";
+            } else if (askDominant) {
+              ctx.fillStyle = "#dcfce7";
+            } else {
+              ctx.fillStyle = "#fee2e2";
+            }
           }
 
-          // Text Rendering (Bid x Ask)
-          if (bodyWidth >= 34) {
-            const fontSize = Math.max(9, Math.min(12, Math.floor(bodyWidth / 7.2)));
+          ctx.fillRect(bodyLeft, cellTop + 1, bgBarWidth, rowHeight - 2);
+
+          // (B) Yellow POC Box (Centered on Candle at Point of Control Level)
+          if (isPoc) {
+            // Subtle warm yellow highlight for POC row
+            ctx.fillStyle = colors.pocFill;
+            ctx.fillRect(bodyLeft, cellTop, bodyWidth, rowHeight);
+
+            // Bold yellow outline box framing the centered POC row
+            ctx.strokeStyle = colors.pocBox;
+            ctx.lineWidth = 2.4;
+            ctx.strokeRect(bodyLeft, cellTop, bodyWidth, rowHeight);
+          }
+
+          // (C) Bid X Ask Text Centered at x
+          if (bodyWidth >= 28) {
+            const fontSize = Math.max(9, Math.min(11.5, Math.floor(bodyWidth / 7.2)));
             ctx.font = `600 ${fontSize}px "IBM Plex Mono", Consolas, Menlo, monospace`;
             ctx.textBaseline = "middle";
 
-            // Bid text (Left aligned or right-aligned to separator)
-            const bidText = String(lvl.bid);
-            const askText = String(lvl.ask);
-            const sepText = " x ";
+            const bidStr = formatVol(lvl.bid);
+            const askStr = formatVol(lvl.ask);
+            const textCenterX = x;
 
-            // Colors for Bid
+            // Bid text
             if (lvl.bid === 0) {
               ctx.fillStyle = colors.numZero;
             } else if (isBidImbalanced) {
@@ -421,15 +445,15 @@ export default function FootprintPage() {
               ctx.fillStyle = colors.numNormal;
             }
             ctx.textAlign = "right";
-            ctx.fillText(bidText, x - 8, y);
+            ctx.fillText(bidStr, textCenterX - 7, y);
 
-            // Separator 'x'
+            // Separator 'X'
             ctx.fillStyle = colors.multiplierX;
-            ctx.font = `400 ${fontSize - 1}px monospace`;
+            ctx.font = `500 ${fontSize - 1}px monospace`;
             ctx.textAlign = "center";
-            ctx.fillText("x", x, y);
+            ctx.fillText("X", textCenterX, y);
 
-            // Colors for Ask
+            // Ask text
             ctx.font = `600 ${fontSize}px "IBM Plex Mono", Consolas, Menlo, monospace`;
             if (lvl.ask === 0) {
               ctx.fillStyle = colors.numZero;
@@ -439,24 +463,14 @@ export default function FootprintPage() {
               ctx.fillStyle = colors.numNormal;
             }
             ctx.textAlign = "left";
-            ctx.fillText(askText, x + 8, y);
+            ctx.fillText(askStr, textCenterX + 7, y);
           }
         });
-
-        // 4. Candlestick Body Box Frame (MotiveWave style outline)
-        const openY = yAt(bar.open);
-        const closeY = yAt(bar.close);
-        const boxTop = Math.min(openY, closeY);
-        const boxHeight = Math.max(4, Math.abs(closeY - openY));
-
-        ctx.strokeStyle = candleColor;
-        ctx.lineWidth = 1.6;
-        ctx.strokeRect(bodyLeft, boxTop, bodyWidth, boxHeight);
 
         // Hover Column Highlight
         if (hoverIndex === idx) {
           ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
-          ctx.fillRect(bodyLeft - 2, top, bodyWidth + 4, plotH);
+          ctx.fillRect(bodyLeft - 3, top, bodyWidth + 6, plotH);
         }
       });
 
@@ -631,6 +645,16 @@ export default function FootprintPage() {
           <div className="fp-view-badge">
             <span>Bid × Ask Footprint</span>
           </div>
+
+          {/* Bar Chart Checkbox Toggle */}
+          <label className={`fp-checkbox-pill${showDelta ? " is-active" : ""}`} title="Toggle Lower Bar Chart">
+            <input
+              type="checkbox"
+              checked={showDelta}
+              onChange={(e) => setShowDelta(e.target.checked)}
+            />
+            <span>Bar Chart</span>
+          </label>
         </div>
 
         {/* Action Controls & Theme Toggle */}
@@ -733,7 +757,7 @@ export default function FootprintPage() {
         {/* Footprint Chart Canvas Area */}
         <div className="fp-canvas-container" ref={wrapRef}>
           <div className="fp-legend-pill">
-            <span className="fp-legend-poc">■ POC (Volume Box)</span>
+            <span className="fp-legend-poc">■ POC (Point of Control)</span>
             <span className="fp-legend-ask">■ Ask Imbalance (Buy)</span>
             <span className="fp-legend-bid">■ Bid Imbalance (Sell)</span>
           </div>
@@ -790,13 +814,15 @@ export default function FootprintPage() {
           >
             Imbalance {imbalanceRatio * 100}%
           </button>
-          <button
-            type="button"
-            className={`fp-toggle-pill${showDelta ? " is-active" : ""}`}
-            onClick={() => setShowDelta(!showDelta)}
-          >
-            Delta Profile
-          </button>
+          <label className={`fp-toggle-pill fp-footer-check${showDelta ? " is-active" : ""}`} title="Toggle Lower Bar Chart">
+            <input
+              type="checkbox"
+              checked={showDelta}
+              onChange={(e) => setShowDelta(e.target.checked)}
+              style={{ marginRight: 5, accentColor: "var(--fp-accent)", cursor: "pointer" }}
+            />
+            Bar Chart
+          </label>
         </div>
 
         <div className="fp-footer-right">
