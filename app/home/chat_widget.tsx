@@ -48,11 +48,11 @@ export default function ChatWidget() {
         aria-expanded={isOpen}
       >
         {isOpen ? (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="24" height="24" style={{ width: 24, height: 24 }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <svg viewBox="0 0 24 24" fill="currentColor">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24" style={{ width: 24, height: 24 }}>
             <path d="M5 18.5l-1.2 3.4c-.2.6.4 1.1.9.9L8.2 21A9 9 0 1012 21H5z" />
           </svg>
         )}

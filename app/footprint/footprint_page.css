@@ -1,30 +1,353 @@
+/* ==========================================================================
+   MotiveWave / GoCharting Pro Footprint Orderflow Styles
+   ========================================================================== */
+
 .fp-page {
-  height: 100dvh;
-  max-height: 100dvh;
-}
-
-.fp-body {
-  grid-template-columns: 44px 1fr 52px;
-  min-width: 0;
-}
-
-.fp-chart-wrap {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  background: #fff;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  user-select: none;
 }
 
-.fp-canvas-box {
+/* --------------------------------------------------------------------------
+   Themes: Dark (Default) & Light
+   -------------------------------------------------------------------------- */
+.fp-page.theme-dark {
+  --fp-bg: #06070a;
+  --fp-surface: #0e111a;
+  --fp-surface-hover: #171b26;
+  --fp-border: #1a1e2b;
+  --fp-text: #ffffff;
+  --fp-text-muted: #848f9f;
+  --fp-accent: #f0b429;
+  --fp-poc-box: #facc15;
+  --fp-green: #22c55e;
+  --fp-red: #ef4444;
+  --fp-canvas-bg: #06070a;
+  --fp-ribbon-bg: #0a0c13;
+  --fp-tools-bg: #090b12;
+  --fp-right-bg: #0b0d14;
+}
+
+.fp-page.theme-light {
+  --fp-bg: #f8fafc;
+  --fp-surface: #ffffff;
+  --fp-surface-hover: #f1f5f9;
+  --fp-border: #e2e8f0;
+  --fp-text: #0f172a;
+  --fp-text-muted: #64748b;
+  --fp-accent: #d97706;
+  --fp-poc-box: #d97706;
+  --fp-green: #16a34a;
+  --fp-red: #dc2626;
+  --fp-canvas-bg: #ffffff;
+  --fp-ribbon-bg: #f8fafc;
+  --fp-tools-bg: #f1f5f9;
+  --fp-right-bg: #f8fafc;
+}
+
+/* --------------------------------------------------------------------------
+   Header Bar
+   -------------------------------------------------------------------------- */
+.fp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 48px;
+  padding: 0 14px;
+  background: var(--fp-surface);
+  border-bottom: 1px solid var(--fp-border);
+  color: var(--fp-text);
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.fp-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fp-logo {
+  display: flex;
+  align-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.fp-logo svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fp-symbol-selector select {
+  height: 30px;
+  padding: 0 10px;
+  background: var(--fp-surface-hover);
+  border: 1px solid var(--fp-border);
+  border-radius: 6px;
+  color: var(--fp-text);
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+}
+
+.fp-tf-pills {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--fp-surface-hover);
+  padding: 3px;
+  border-radius: 6px;
+  border: 1px solid var(--fp-border);
+}
+
+.fp-tf-btn {
+  height: 24px;
+  padding: 0 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--fp-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fp-tf-btn:hover {
+  color: var(--fp-text);
+}
+
+.fp-tf-btn.is-active {
+  background: var(--fp-accent);
+  color: #0b0c10;
+  font-weight: 700;
+}
+
+.fp-view-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(240, 180, 41, 0.1);
+  border: 1px solid rgba(240, 180, 41, 0.25);
+  border-radius: 4px;
+  color: var(--fp-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fp-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Theme Switcher Button */
+.fp-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--fp-surface-hover);
+  border: 1px solid var(--fp-border);
+  border-radius: 6px;
+  color: var(--fp-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.fp-theme-toggle:hover {
+  border-color: var(--fp-accent);
+  color: var(--fp-accent);
+  transform: translateY(-1px);
+}
+
+.fp-theme-icon {
+  font-size: 13px;
+}
+
+.fp-trade-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.fp-btn-buy,
+.fp-btn-sell {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.fp-btn-buy {
+  background: #16a34a;
+}
+
+.fp-btn-sell {
+  background: #dc2626;
+}
+
+.fp-btn-buy:hover,
+.fp-btn-sell:hover {
+  filter: brightness(1.1);
+}
+
+.fp-upgrade-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--fp-accent);
+  color: #111;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: filter 0.15s ease;
+}
+
+.fp-upgrade-btn:hover {
+  filter: brightness(1.08);
+}
+
+.fp-user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #374151;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   OHLC & Orderflow Ribbon
+   -------------------------------------------------------------------------- */
+.fp-ticker-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 32px;
+  padding: 0 14px;
+  background: var(--fp-ribbon-bg);
+  border-bottom: 1px solid var(--fp-border);
+  color: var(--fp-text);
+  font-size: 12px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.fp-ribbon-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fp-ribbon-stat small {
+  color: var(--fp-text-muted);
+}
+
+.fp-ribbon-stat.is-up {
+  color: var(--fp-green);
+}
+
+.fp-ribbon-stat.is-down {
+  color: var(--fp-red);
+}
+
+.fp-ribbon-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--fp-border);
+}
+
+.fp-poc-badge b {
+  color: var(--fp-poc-box);
+}
+
+/* --------------------------------------------------------------------------
+   Main Workspace
+   -------------------------------------------------------------------------- */
+.fp-workspace {
+  display: grid;
+  grid-template-columns: 44px 1fr 52px;
+  flex: 1;
+  min-height: 0;
+  background: var(--fp-canvas-bg);
+}
+
+/* Left Tools Rail */
+.fp-tools-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px;
+  background: var(--fp-tools-bg);
+  border-right: 1px solid var(--fp-border);
+}
+
+.fp-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--fp-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fp-tool-btn:hover {
+  background: var(--fp-surface-hover);
+  color: var(--fp-text);
+}
+
+.fp-tool-btn.is-active {
+  background: var(--fp-surface-hover);
+  border-color: var(--fp-accent);
+  color: var(--fp-accent);
+}
+
+/* Chart Canvas Container */
+.fp-canvas-container {
   position: relative;
   flex: 1;
   min-width: 0;
   min-height: 0;
+  height: 100%;
+  background: var(--fp-canvas-bg);
 }
 
-.fp-canvas {
+.fp-chart-canvas {
   display: block;
   width: 100%;
   height: 100%;
@@ -32,208 +355,210 @@
   touch-action: none;
 }
 
-.fp-meta {
+/* Legend Pill */
+.fp-legend-pill {
+  position: absolute;
+  top: 10px;
+  left: 14px;
   display: flex;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  gap: 8px 14px;
-  padding: 6px 12px;
-  border-bottom: 1px solid #eceff3;
-  color: #111827;
-  font-size: 12px;
-  background: #fff;
-}
-
-.fp-meta strong {
-  font-size: 13px;
-  letter-spacing: 0.02em;
-}
-
-.fp-chart-type {
-  font-weight: 700;
-}
-
-.fp-buy,
-.fp-sell {
-  min-width: 58px;
-  height: 30px;
-  border: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  background: rgba(14, 17, 26, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--fp-border);
   border-radius: 6px;
-  color: #fff;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.fp-legend-poc {
+  color: var(--fp-poc-box);
+}
+
+.fp-legend-ask {
+  color: var(--fp-green);
+}
+
+.fp-legend-bid {
+  color: var(--fp-red);
+}
+
+/* Floating Zoom & Pan Controls */
+.fp-float-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(14, 17, 26, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--fp-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 15;
+}
+
+.fp-float-controls button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.fp-buy {
-  background: #16a34a;
+.fp-float-controls button:hover {
+  background: var(--fp-surface-hover);
+  color: var(--fp-accent);
 }
 
-.fp-sell {
-  background: #dc2626;
-}
-
-.fp-rail {
+/* Right Orderflow Panels Rail */
+.fp-right-rail {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 8px 6px;
-  border-left: 1px solid #e5e7eb;
-  background: #f3f4f6;
+  background: var(--fp-right-bg);
+  border-left: 1px solid var(--fp-border);
 }
 
-.fp-rail button {
+.fp-rail-tab {
   height: 42px;
-  padding: 0 4px;
-  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fp-surface);
+  border: 1px solid var(--fp-border);
   border-radius: 6px;
-  background: #fff;
-  color: #111;
+  color: var(--fp-text);
   font-size: 10px;
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.fp-rail button.is-active {
-  background: #dbeafe;
-  border-color: #93c5fd;
+.fp-rail-tab:hover {
+  border-color: var(--fp-accent);
+  color: var(--fp-accent);
 }
 
-@media (max-width: 1100px) {
-  .fp-body {
+.fp-rail-tab.is-active {
+  background: rgba(240, 180, 41, 0.12);
+  border-color: var(--fp-accent);
+  color: var(--fp-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Footer Toolbar
+   -------------------------------------------------------------------------- */
+.fp-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 34px;
+  padding: 0 14px;
+  background: var(--fp-surface);
+  border-top: 1px solid var(--fp-border);
+  color: var(--fp-text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.fp-footer-left,
+.fp-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fp-clock-badge {
+  font-weight: 600;
+  color: var(--fp-text);
+}
+
+.fp-toggle-pill {
+  height: 22px;
+  padding: 0 8px;
+  background: var(--fp-surface-hover);
+  border: 1px solid var(--fp-border);
+  border-radius: 4px;
+  color: var(--fp-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fp-toggle-pill.is-active {
+  background: var(--fp-surface);
+  border-color: var(--fp-accent);
+  color: var(--fp-accent);
+}
+
+.fp-action-link {
+  background: transparent;
+  border: 0;
+  color: var(--fp-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.fp-action-link:hover {
+  color: var(--fp-text);
+}
+
+.fp-save-btn {
+  color: var(--fp-accent);
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+@media (max-width: 960px) {
+  .fp-workspace {
     grid-template-columns: 44px 1fr;
   }
 
-  .fp-rail {
+  .fp-right-rail {
     display: none;
   }
 }
 
-@media (max-width: 900px) {
-  .fp-page .candle-top {
-    flex-wrap: wrap;
-    min-height: 0;
+@media (max-width: 680px) {
+  .fp-header {
+    height: auto;
     padding: 8px;
-    gap: 8px;
+    flex-wrap: wrap;
   }
 
-  .fp-page .candle-brand strong {
-    display: none;
-  }
-
-  .fp-page .candle-ticker {
-    margin-left: 0;
-    padding-left: 0;
-    border-left: 0;
-    font-size: 12px;
-  }
-
-  .fp-page .fp-controls {
-    display: flex;
-    order: 3;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .fp-page .fp-desktop-only,
-  .fp-page .candle-hint,
-  .fp-page .candle-watermark,
-  .fp-page .candle-tools,
-  .fp-meta-extra {
-    display: none;
-  }
-
-  .fp-page .candle-top-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-  }
-
-  .fp-page .candle-top-actions .fp-buy,
-  .fp-page .candle-top-actions .fp-sell {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 52px;
-    height: 32px;
-    font-size: 13px;
-  }
-
-  .fp-body {
+  .fp-workspace {
     grid-template-columns: 1fr;
   }
 
-  .fp-meta {
-    gap: 6px 10px;
-    padding: 6px 8px;
-    font-size: 11px;
-  }
-
-  .fp-meta strong {
-    font-size: 12px;
-  }
-
-  .fp-page .candle-ohlc {
-    gap: 8px;
-    min-height: 0;
-    padding: 6px 8px;
-    font-size: 11px;
-    white-space: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .fp-page .candle-float-nav {
-    left: 8px;
-    right: auto;
-    bottom: 44px;
-    transform: none;
-    flex-direction: column;
-  }
-
-  .fp-page .candle-float-nav button {
-    width: 36px;
-    height: 36px;
-  }
-
-  .fp-page .candle-ranges,
-  .fp-page .candle-footer {
-    flex-wrap: wrap;
-    min-height: 0;
-    padding: 6px 8px;
-    gap: 6px;
-  }
-
-  .fp-page .candle-footer-left button:nth-child(n + 3),
-  .fp-page .candle-footer-right label {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .fp-page .candle-upgrade,
-  .fp-page .candle-user,
-  .fp-chart-type {
+  .fp-tools-rail,
+  .fp-legend-pill {
     display: none;
   }
 
-  .fp-page .candle-top-actions .fp-buy,
-  .fp-page .candle-top-actions .fp-sell {
-    min-width: 56px;
-    height: 34px;
-    font-size: 14px;
-  }
-
-  .fp-page .fp-controls select {
-    height: 32px;
-    min-width: 72px;
-    font-size: 13px;
-  }
-
-  .fp-page .candle-float-nav button {
-    width: 40px;
-    height: 40px;
+  .fp-view-badge {
+    display: none;
   }
 }

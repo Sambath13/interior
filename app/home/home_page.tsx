@@ -9,6 +9,11 @@ import HomeNewsletter from "./home_newsletter";
 import HomeFooter from "./home_footer";
 import ChatWidget from "./chat_widget";
 import "./home_page.css";
+import "./why_us.css";
+import "./home_features.css";
+import "./home_newsletter.css";
+import "./home_footer.css";
+import "./chat_widget.css";
 
 function Hero() {
   const [symbol, setSymbol] = useState("");

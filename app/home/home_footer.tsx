@@ -66,8 +66,8 @@ export default function HomeFooter() {
         <div className="home-footer-bottom">
           <div className="home-footer-brand">
             <Link href="/home" className="home-footer-logo">
-              <span className="home-footer-logo-mark" aria-hidden="true">
-                <svg viewBox="0 0 32 32" fill="none">
+              <span className="home-footer-logo-mark" aria-hidden="true" style={{ width: 28, height: 28, display: "inline-flex", flexShrink: 0 }}>
+                <svg viewBox="0 0 32 32" fill="none" width="28" height="28" style={{ width: 28, height: 28, display: "block" }}>
                   <rect width="32" height="32" rx="8" fill="#f0b429" />
                   <path
                     d="M7 22V18.5M11.5 22V14M16 22V11M20.5 22V15.5M25 22V9"
