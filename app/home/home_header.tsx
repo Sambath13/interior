@@ -222,11 +222,23 @@ function DiamondIcon() {
 }
 
 export default function HomeHeader({ current }: { current: PageId }) {
+  const [userInitial, setUserInitial] = useState("G");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [regionOpen, setRegionOpen] = useState(false);
   const [region, setRegion] = useState(REGIONS[0]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored =
+        localStorage.getItem("userInitial") ||
+        localStorage.getItem("userEmail")?.charAt(0).toUpperCase();
+      if (stored) {
+        setUserInitial(stored);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     function handlePointer(event: MouseEvent) {
@@ -371,13 +383,8 @@ export default function HomeHeader({ current }: { current: PageId }) {
             ) : null}
           </div>
 
-          <Link href="/pricing" className="home-upgrade">
-            <DiamondIcon />
-            <span>Upgrade</span>
-          </Link>
-
-          <div className="home-avatar" aria-label="Account">
-            G
+          <div className="home-avatar" aria-label="Account" title={`Account (${userInitial})`}>
+            {userInitial}
           </div>
 
           <button

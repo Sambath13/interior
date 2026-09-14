@@ -69,6 +69,12 @@ export default function Login() {
 
   const goToHome = () => {
     setIsLoading(true);
+    if (typeof window !== "undefined" && username.trim()) {
+      const cleanUser = username.trim();
+      const firstChar = cleanUser.charAt(0).toUpperCase();
+      localStorage.setItem("userEmail", cleanUser);
+      localStorage.setItem("userInitial", firstChar);
+    }
     router.push("/home");
   };
 

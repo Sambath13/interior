@@ -148,6 +148,7 @@ function generateFootprintData(instrument = INSTRUMENTS[0]): FootprintBar[] {
 }
 
 export default function FootprintPage() {
+  const [userInitial, setUserInitial] = useState("G");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [instrument, setInstrument] = useState(INSTRUMENTS[0]);
   const [timeframe, setTimeframe] = useState<Timeframe>("5m");
@@ -159,6 +160,17 @@ export default function FootprintPage() {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [hoverPrice, setHoverPrice] = useState<number | null>(null);
   const [view, setView] = useState({ from: 10, count: 10 });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored =
+        localStorage.getItem("userInitial") ||
+        localStorage.getItem("userEmail")?.charAt(0).toUpperCase();
+      if (stored) {
+        setUserInitial(stored);
+      }
+    }
+  }, []);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -689,12 +701,8 @@ export default function FootprintPage() {
             </button>
           </div>
 
-          <Link href="/pricing" className="fp-upgrade-btn">
-            Upgrade
-          </Link>
-
-          <div className="fp-user-avatar" title="Account">
-            G
+          <div className="fp-user-avatar" title={`Account (${userInitial})`}>
+            {userInitial}
           </div>
         </div>
       </header>

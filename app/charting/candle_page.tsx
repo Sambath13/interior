@@ -185,12 +185,24 @@ function formatClock(value: number) {
 }
 
 export default function CandlePage() {
+  const [userInitial, setUserInitial] = useState("G");
   const baseBars = useMemo(() => generateMinuteBars(), []);
   const [timeframe, setTimeframe] = useState<Timeframe>("30m");
   const [range, setRange] = useState<Range>("15D");
   const [tool, setTool] = useState("cross");
   const [clock, setClock] = useState("");
   const [hover, setHover] = useState<Candle | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored =
+        localStorage.getItem("userInitial") ||
+        localStorage.getItem("userEmail")?.charAt(0).toUpperCase();
+      if (stored) {
+        setUserInitial(stored);
+      }
+    }
+  }, []);
   const chartEl = useRef<HTMLDivElement>(null);
   const priceAxisEl = useRef<HTMLDivElement>(null);
   const chartApi = useRef<IChartApi | null>(null);
@@ -549,17 +561,14 @@ export default function CandlePage() {
         </div>
 
         <div className="candle-top-actions">
-          <Link href="/pricing" className="candle-upgrade" target="_blank">
-            Upgrade
-          </Link>
           <button type="button" aria-label="Search">
             ⌕
           </button>
           <button type="button" aria-label="More">
             ⋮
           </button>
-          <span className="candle-user">
-            G<i>1</i>
+          <span className="candle-user" title={`Account (${userInitial})`}>
+            {userInitial}<i>1</i>
           </span>
         </div>
       </header>
