@@ -285,9 +285,16 @@ export default function FootprintPage() {
   const [clock, setClock] = useState("");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [hoverPrice, setHoverPrice] = useState<number | null>(null);
-  const [view, setView] = useState({ from: 15, count: 8 });
+  const [view, setView] = useState({ from: 19, count: 5 });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<FootprintSettings>(DEFAULT_SETTINGS);
+
+  const bars = useMemo(() => generateFootprintData(instrument), [instrument]);
+  const lastBar = bars[bars.length - 1];
+  const activeBar = hoverIndex != null ? bars[hoverIndex] : lastBar;
+  const prevBar = bars[Math.max(0, (hoverIndex ?? bars.length - 1) - 1)] ?? lastBar;
+  const priceChange = activeBar.close - prevBar.close;
+  const changePct = (priceChange / prevBar.close) * 100;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -297,8 +304,11 @@ export default function FootprintPage() {
       if (stored) {
         setUserInitial(stored);
       }
+      const isMobile = window.innerWidth < 680;
+      const count = isMobile ? 4 : 6;
+      setView({ from: Math.max(0, bars.length - count), count });
     }
-  }, []);
+  }, [bars.length]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -331,13 +341,6 @@ export default function FootprintPage() {
   });
   const dragRef = useRef<{ x: number; y: number; from: number; pinch?: number; count?: number } | null>(null);
 
-  const bars = useMemo(() => generateFootprintData(instrument), [instrument]);
-  const lastBar = bars[bars.length - 1];
-  const activeBar = hoverIndex != null ? bars[hoverIndex] : lastBar;
-  const prevBar = bars[Math.max(0, (hoverIndex ?? bars.length - 1) - 1)] ?? lastBar;
-  const priceChange = activeBar.close - prevBar.close;
-  const changePct = (priceChange / prevBar.close) * 100;
-
   // Session clock
   useEffect(() => {
     document.title = `${instrument.id} Footprint — TradeFoot Orderflow`;
@@ -359,8 +362,9 @@ export default function FootprintPage() {
   // View bounds & zooming
   const clampView = useCallback(
     (from: number, count: number) => {
-      const minCount = 4;
-      const maxCount = 14;
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 680;
+      const minCount = isMobile ? 2 : 3;
+      const maxCount = isMobile ? 8 : 14;
       const nextCount = Math.min(bars.length, maxCount, Math.max(minCount, count));
       const nextFrom = Math.min(Math.max(0, from), Math.max(0, bars.length - nextCount));
       return { from: nextFrom, count: nextCount };
@@ -387,7 +391,9 @@ export default function FootprintPage() {
   );
 
   const resetZoom = useCallback(() => {
-    setView({ from: Math.max(0, bars.length - 8), count: 8 });
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 680;
+    const defaultCount = isMobile ? 4 : 6;
+    setView({ from: Math.max(0, bars.length - defaultCount), count: defaultCount });
   }, [bars.length]);
 
   // Main Canvas Rendering for Exact MotiveWave Footprint
@@ -541,7 +547,9 @@ export default function FootprintPage() {
         const candleColor = isUp ? colors.upBorder : colors.downBorder;
 
         // Centered column width with generous breathing room between adjacent candle bars
-        const bodyWidth = Math.max(34, Math.min(barW * 0.70, barW - 24));
+        const isMobile = compact;
+        const colGap = Math.max(isMobile ? 22 : 26, Math.min(48, barW * 0.32));
+        const bodyWidth = Math.max(26, barW - colGap);
         const bodyLeft = x - bodyWidth / 2;
 
         // Identify Point of Control (POC) and Max Level Volumes for dynamic heatmap scaling
@@ -570,13 +578,14 @@ export default function FootprintPage() {
         ctx.stroke();
 
         // 3. Render Each Footprint Level Row with Split Left (Red) / Right (Green) Heatmaps
-        const rowHeight = Math.max(13, Math.min(22, plotH / Math.max(1, (maxP - minP) / tick)));
-        const rowGap = 2;
-        const cellH = Math.max(11, rowHeight - rowGap);
+        const levelCount = Math.max(1, (maxP - minP) / tick);
+        const rowHeight = Math.max(14, Math.min(26, (plotH - 12) / levelCount));
+        const rowGap = rowHeight > 16 ? 2.5 : 1.5;
+        const cellH = Math.max(12, rowHeight - rowGap);
 
         // Gap separating Left (Red) and Right (Green) cells
-        const centerGap = 6;
-        const leftBoxW = Math.max(14, Math.floor((bodyWidth - centerGap) / 2));
+        const centerGap = bodyWidth > 64 ? 6 : 4;
+        const leftBoxW = Math.max(12, Math.floor((bodyWidth - centerGap) / 2));
         const rightBoxW = leftBoxW;
         const leftBoxX = x - centerGap / 2 - leftBoxW;
         const rightBoxX = x + centerGap / 2;
@@ -642,8 +651,8 @@ export default function FootprintPage() {
           }
 
           // (D) Bid X Ask Text Placement
-          if (settings.showText && bodyWidth >= 28) {
-            const fontSize = Math.max(8, Math.min(settings.maxFontSize, Math.floor(bodyWidth / 7.2)));
+          if (settings.showText && bodyWidth >= 26) {
+            const fontSize = Math.max(7.5, Math.min(settings.maxFontSize, Math.min(cellH - 3, Math.floor(leftBoxW / 3.3))));
             ctx.font = `600 ${fontSize}px "IBM Plex Mono", Consolas, Menlo, monospace`;
             ctx.textBaseline = "middle";
 
