@@ -286,6 +286,7 @@ export default function FootprintPage() {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [hoverPrice, setHoverPrice] = useState<number | null>(null);
   const [view, setView] = useState({ from: 19, count: 5 });
+  const [customPriceRange, setCustomPriceRange] = useState<{ min: number; max: number } | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<FootprintSettings>(DEFAULT_SETTINGS);
 
@@ -340,6 +341,12 @@ export default function FootprintPage() {
     barW: 80,
   });
   const dragRef = useRef<{ x: number; y: number; from: number; pinch?: number; count?: number } | null>(null);
+  const priceDragRef = useRef<{
+    startY: number;
+    minP: number;
+    maxP: number;
+    grabPrice: number;
+  } | null>(null);
 
   // Session clock
   useEffect(() => {
@@ -394,7 +401,9 @@ export default function FootprintPage() {
     const isMobile = typeof window !== "undefined" && window.innerWidth < 680;
     const defaultCount = isMobile ? 4 : 6;
     setView({ from: Math.max(0, bars.length - defaultCount), count: defaultCount });
-  }, [bars.length]);
+    setCustomPriceRange(null);
+    showToast("Scale reset to default");
+  }, [bars.length, showToast]);
 
   // Main Canvas Rendering for Exact MotiveWave Footprint
   useEffect(() => {
@@ -449,7 +458,7 @@ export default function FootprintPage() {
       ctx.fillRect(0, 0, width, height);
 
       const compact = width < 720;
-      const priceW = compact ? 56 : 74;
+      const priceW = compact ? 64 : 78;
       const timeH = 24;
       const deltaH = showDelta ? (compact ? 32 : 44) : 0;
       const left = 6;
@@ -462,13 +471,15 @@ export default function FootprintPage() {
         Math.min(bars.length, Math.ceil(view.from + view.count))
       );
 
-      // Determine price scaling
+      // Determine price scaling (Auto or Custom User-Adjusted)
       const highs = visibleBars.map((b) => b.high);
       const lows = visibleBars.map((b) => b.low);
       const tick = instrument.tick;
-      const maxP = (highs.length ? Math.max(...highs) : lastBar.high) + tick * 3;
-      const minP = (lows.length ? Math.min(...lows) : lastBar.low) - tick * 3;
-      const spanP = Math.max(tick * 8, maxP - minP);
+      const autoMaxP = (highs.length ? Math.max(...highs) : lastBar.high) + tick * 3;
+      const autoMinP = (lows.length ? Math.min(...lows) : lastBar.low) - tick * 3;
+      const maxP = customPriceRange ? customPriceRange.max : autoMaxP;
+      const minP = customPriceRange ? customPriceRange.min : autoMinP;
+      const spanP = Math.max(tick * 4, maxP - minP);
 
       const barW = plotW / view.count;
       const xAt = (idx: number) => left + (idx - view.from + 0.5) * barW;
@@ -493,23 +504,44 @@ export default function FootprintPage() {
         yToPrice,
       };
 
-      // Horizontal Grid lines & Price Labels
-      const gridStep = tick * (compact ? 4 : 2);
+      // Calculate dynamic price grid step
+      const stepCount = Math.max(4, Math.floor(plotH / (compact ? 32 : 38)));
+      const rawStep = spanP / stepCount;
+      const niceSteps = [
+        tick,
+        tick * 2,
+        tick * 4,
+        tick * 5,
+        tick * 10,
+        tick * 20,
+        tick * 25,
+        tick * 50,
+        tick * 100,
+        tick * 200,
+        tick * 250,
+        tick * 500,
+        tick * 1000,
+      ];
+      const gridStep = niceSteps.find((s) => s >= rawStep) || Math.ceil(rawStep / tick) * tick;
+
+      // =========================================================================
+      // 1. CLIPPED PLOT AREA: Grid, Candles, Footprints, Drawings & Guides
+      // =========================================================================
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(left, top, plotW, plotH + deltaH + 4);
+      ctx.clip();
+
+      // Horizontal Grid lines inside plot
       ctx.lineWidth = 1;
-      for (let p = snap(minP, gridStep); p <= maxP; p += gridStep) {
+      const startGridP = Math.ceil(minP / gridStep) * gridStep;
+      for (let p = startGridP; p <= maxP + gridStep * 0.01; p = Number((p + gridStep).toFixed(4))) {
         const y = yAt(p);
         ctx.strokeStyle = colors.grid;
         ctx.beginPath();
         ctx.moveTo(left, y);
         ctx.lineTo(left + plotW, y);
         ctx.stroke();
-
-        // Right scale label
-        ctx.fillStyle = colors.gridText;
-        ctx.font = `10px ui-sans-serif, Arial`;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(formatPrice(p, tick), left + plotW + 8, y);
       }
 
       // Vertical bar separator grid lines
@@ -578,10 +610,8 @@ export default function FootprintPage() {
         ctx.stroke();
 
         // 3. Render Each Footprint Level Row with Split Left (Red) / Right (Green) Heatmaps
-        const levelCount = Math.max(1, (maxP - minP) / tick);
-        const rowHeight = Math.max(14, Math.min(26, (plotH - 12) / levelCount));
-        const rowGap = rowHeight > 16 ? 2.5 : 1.5;
-        const cellH = Math.max(12, rowHeight - rowGap);
+        const tickH = (tick / spanP) * plotH;
+        const cellH = Math.max(5, Math.min(40, tickH - (tickH > 18 ? 2.5 : 1.2)));
 
         // Gap separating Left (Red) and Right (Green) cells
         const centerGap = bodyWidth > 64 ? 6 : 4;
@@ -691,28 +721,23 @@ export default function FootprintPage() {
             ctx.fillText(askStr, askTextX, y);
           }
         });
-
-        // Hover Column Highlight
-        if (hoverIndex === idx) {
-          ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
-          ctx.fillRect(bodyLeft - 3, top, bodyWidth + 6, plotH);
-        }
       });
 
-      // 5. Delta Histogram / Volume Bar below chart
+      // 4. Lower Delta Bar Chart (if toggled ON)
       if (showDelta) {
-        const deltaAreaY = top + plotH + 8;
+        const deltaAreaY = height - timeH - deltaH;
+        ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(left, deltaAreaY, plotW, 1);
+
+        const maxDeltaVol = Math.max(1, ...visibleBars.map((b) => Math.abs(b.buyTrades - b.sellTrades) * 35));
+        const maxVolScale = Math.max(500, maxDeltaVol);
+
         visibleBars.forEach((bar, offset) => {
           const idx = Math.max(0, Math.floor(view.from)) + offset;
           const x = xAt(idx);
-          const buyVol = bar.levels.reduce((s, l) => s + l.ask, 0);
-          const sellVol = bar.levels.reduce((s, l) => s + l.bid, 0);
-          const totalVol = buyVol + sellVol;
-          const delta = buyVol - sellVol;
+          const delta = (bar.buyTrades - bar.sellTrades) * 35;
           const isPos = delta >= 0;
-
-          const barW_sub = barW * 0.75;
-          const maxVolScale = 4000;
+          const barW_sub = Math.max(20, barW * 0.65);
           const dHeight = Math.min(deltaH - 12, (Math.abs(delta) / maxVolScale) * (deltaH - 12));
 
           // Background box
@@ -735,38 +760,7 @@ export default function FootprintPage() {
         });
       }
 
-      // 6. Time Scale Axis
-      const timeAxisY = height - 10;
-      ctx.fillStyle = colors.gridText;
-      ctx.font = `10px ui-sans-serif, Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const timeStep = compact ? (view.count > 8 ? 2 : 1) : view.count > 16 ? 3 : 1;
-      visibleBars.forEach((bar, offset) => {
-        if (offset % timeStep !== 0) return;
-        const idx = Math.max(0, Math.floor(view.from)) + offset;
-        ctx.fillText(formatAxisTime(bar.time), xAt(idx), timeAxisY);
-      });
-
-      // 7. Last Price Marker & Right Scale Box
-      const lastY = yAt(lastBar.close);
-      ctx.setLineDash([4, 3]);
-      ctx.strokeStyle = colors.currentPriceBg;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(left, lastY);
-      ctx.lineTo(left + plotW, lastY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Current Price Badge
-      ctx.fillStyle = colors.currentPriceBg;
-      ctx.fillRect(left + plotW + 2, lastY - 9, priceW - 4, 18);
-      ctx.fillStyle = colors.currentPriceText;
-      ctx.font = `bold 10px monospace`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      // 8. Render All Permanent Drawings + Active Live Preview Arrow
+      // 5. Render All Permanent Drawings + Active Live Preview Arrow
       const allDrawings = activeDrawing ? [...drawings, activeDrawing] : drawings;
 
       allDrawings.forEach((d) => {
@@ -837,50 +831,153 @@ export default function FootprintPage() {
         }
       });
 
-      // 9. Interactive Crosshair Lines & Axis Coordinate Badges (Temporary, on Pointer Move)
+      // 6. Crosshair Lines inside Plot Area
       if (tool === "cross" && hoverCoord) {
-        const { x: hx, y: hy, price, time } = hoverCoord;
-
+        const { x: hx, y: hy } = hoverCoord;
         if (hx >= left && hx <= left + plotW && hy >= top && hy <= top + plotH) {
           ctx.save();
           ctx.setLineDash([4, 3]);
           ctx.strokeStyle = colors.crosshair;
           ctx.lineWidth = 1;
 
-          // Horizontal line across complete plot
+          // Horizontal line
           ctx.beginPath();
           ctx.moveTo(left, hy);
           ctx.lineTo(left + plotW, hy);
           ctx.stroke();
 
-          // Vertical line across complete plot
+          // Vertical line
           ctx.beginPath();
           ctx.moveTo(hx, top);
           ctx.lineTo(hx, top + plotH);
           ctx.stroke();
-          ctx.setLineDash([]);
+          ctx.restore();
+        }
+      }
 
-          // Price badge on right axis
-          ctx.fillStyle = "#f0b429";
-          ctx.fillRect(left + plotW + 2, hy - 9, priceW - 4, 18);
-          ctx.fillStyle = "#111111";
-          ctx.font = `bold 10px monospace`;
+      ctx.restore(); // END OF CLIPPED PLOT AREA
+
+      // =========================================================================
+      // 2. TIME SCALE AXIS (BOTTOM)
+      // =========================================================================
+      const timeAxisY = height - 10;
+      ctx.fillStyle = colors.gridText;
+      ctx.font = `10px ui-sans-serif, Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const timeStep = compact ? (view.count > 6 ? 2 : 1) : view.count > 12 ? 2 : 1;
+      visibleBars.forEach((bar, offset) => {
+        if (offset % timeStep !== 0) return;
+        const idx = Math.max(0, Math.floor(view.from)) + offset;
+        ctx.fillText(formatAxisTime(bar.time), xAt(idx), timeAxisY);
+      });
+
+      // Time badge on bottom axis when crosshair is active
+      if (tool === "cross" && hoverCoord && hoverCoord.time) {
+        const hx = hoverCoord.x;
+        if (hx >= left && hx <= left + plotW) {
+          const timeStr = formatAxisTime(hoverCoord.time);
+          ctx.fillStyle = isDark ? "#23293a" : "#cbd5e1";
+          ctx.fillRect(hx - 28, top + plotH + 3, 56, 17);
+          ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+          ctx.font = `bold 9.5px ui-sans-serif, Arial`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(formatPrice(price, tick), left + plotW + (priceW - 4) / 2 + 2, hy);
+          ctx.fillText(timeStr, hx, top + plotH + 11.5);
+        }
+      }
 
-          // Time badge on bottom axis
-          if (time) {
-            const timeStr = formatAxisTime(time);
-            ctx.fillStyle = isDark ? "#23293a" : "#cbd5e1";
-            ctx.fillRect(hx - 28, top + plotH + 3, 56, 17);
-            ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
-            ctx.font = `bold 9.5px ui-sans-serif, Arial`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(timeStr, hx, top + plotH + 11.5);
+      // =========================================================================
+      // 3. DEDICATED ADJUSTABLE RIGHT PRICE LADDER SCALE RAIL
+      // =========================================================================
+      const scaleX = left + plotW;
+      const scaleW = priceW;
+
+      // Solid background for right price ladder (blocks all candles from bleeding through)
+      ctx.fillStyle = colors.priceLadderBg;
+      ctx.fillRect(scaleX, 0, scaleW + 20, height);
+
+      // Left divider line for right price ladder
+      ctx.strokeStyle = colors.priceLadderBorder;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(scaleX, 0);
+      ctx.lineTo(scaleX, height);
+      ctx.stroke();
+
+      // Price scale tick marks & labels
+      ctx.fillStyle = colors.priceText;
+      ctx.font = `500 ${compact ? "9.5px" : "10px"} "IBM Plex Mono", Consolas, monospace`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+
+      const startLadderP = Math.ceil(minP / gridStep) * gridStep;
+      for (let p = startLadderP; p <= maxP + gridStep * 0.01; p = Number((p + gridStep).toFixed(4))) {
+        const y = yAt(p);
+        if (y >= top && y <= top + plotH) {
+          // Tick mark
+          ctx.strokeStyle = colors.priceLadderBorder;
+          ctx.beginPath();
+          ctx.moveTo(scaleX, y);
+          ctx.lineTo(scaleX + 4, y);
+          ctx.stroke();
+
+          // Text label
+          ctx.fillText(formatPrice(p, tick), scaleX + 6, y);
+        }
+      }
+
+      // Last Price Badge on right ladder
+      const lastY = yAt(lastBar.close);
+      if (lastY >= top && lastY <= top + plotH) {
+        // Guideline line across chart
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = colors.currentPriceBg;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(left, lastY);
+        ctx.lineTo(scaleX, lastY);
+        ctx.stroke();
+        ctx.restore();
+
+        // Current Price Badge on right ladder
+        const badgeH = 18;
+        ctx.fillStyle = colors.currentPriceBg;
+        if (typeof ctx.roundRect === "function") {
+          ctx.beginPath();
+          ctx.roundRect(scaleX + 2, lastY - badgeH / 2, scaleW - 4, badgeH, 3);
+          ctx.fill();
+        } else {
+          ctx.fillRect(scaleX + 2, lastY - badgeH / 2, scaleW - 4, badgeH);
+        }
+
+        ctx.fillStyle = colors.currentPriceText;
+        ctx.font = `bold ${compact ? "9.5px" : "10px"} "IBM Plex Mono", Consolas, monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(formatPrice(lastBar.close, tick), scaleX + (scaleW - 4) / 2 + 2, lastY);
+      }
+
+      // Crosshair Price Badge on right ladder
+      if (tool === "cross" && hoverCoord) {
+        const { y: hy, price } = hoverCoord;
+        if (hy >= top && hy <= top + plotH) {
+          const badgeH = 18;
+          ctx.fillStyle = "#f0b429";
+          if (typeof ctx.roundRect === "function") {
+            ctx.beginPath();
+            ctx.roundRect(scaleX + 2, hy - badgeH / 2, scaleW - 4, badgeH, 3);
+            ctx.fill();
+          } else {
+            ctx.fillRect(scaleX + 2, hy - badgeH / 2, scaleW - 4, badgeH);
           }
-          ctx.restore();
+
+          ctx.fillStyle = "#111111";
+          ctx.font = `bold ${compact ? "9.5px" : "10px"} monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(formatPrice(price, tick), scaleX + (scaleW - 4) / 2 + 2, hy);
         }
       }
     };
@@ -891,7 +988,25 @@ export default function FootprintPage() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      zoom(e.deltaY > 0 ? 1.15 : 0.86);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const layout = layoutRef.current;
+      const scaleX = layout ? layout.left + layout.plotW : rect.width - 70;
+
+      if (mouseX >= scaleX && layout) {
+        // Vertical price scale zooming on right ladder
+        const factor = e.deltaY > 0 ? 1.12 : 0.88;
+        const curMin = layout.minP;
+        const curMax = layout.maxP;
+        const center = (curMin + curMax) / 2;
+        const span = Math.max(layout.tick * 4, (curMax - curMin) * factor);
+        setCustomPriceRange({ min: center - span / 2, max: center + span / 2 });
+      } else {
+        // Horizontal time scale zooming on chart
+        zoom(e.deltaY > 0 ? 1.15 : 0.86);
+      }
     };
 
     wrap.addEventListener("wheel", onWheel, { passive: false });
@@ -899,7 +1014,7 @@ export default function FootprintPage() {
       observer.disconnect();
       wrap.removeEventListener("wheel", onWheel);
     };
-  }, [activeDrawing, bars, clampView, drawings, hoverCoord, hoveredDrawingId, hoverIndex, imbalanceRatio, instrument.tick, lastBar, settings, showDelta, theme, tool, view, zoom]);
+  }, [activeDrawing, bars, clampView, customPriceRange, drawings, hoverCoord, hoveredDrawingId, hoverIndex, imbalanceRatio, instrument.tick, lastBar, settings, showDelta, theme, tool, view, zoom]);
 
   // Distance from point (px, py) to line segment (x1, y1) -> (x2, y2)
   const distToSegment = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
@@ -971,6 +1086,20 @@ export default function FootprintPage() {
     const mouseY = e.clientY - rect.top;
     const layout = layoutRef.current;
 
+    // 0. RIGHT PRICE SCALE DRAGGING (Stretching / Compressing price axis like TradingView)
+    const scaleX = layout ? layout.left + layout.plotW : rect.width - 78;
+    if (mouseX >= scaleX && layout) {
+      const grabPrice = layout.yToPrice ? layout.yToPrice(mouseY) : (layout.minP + layout.maxP) / 2;
+      priceDragRef.current = {
+        startY: e.clientY,
+        minP: layout.minP,
+        maxP: layout.maxP,
+        grabPrice,
+      };
+      canvas.style.cursor = "ns-resize";
+      return;
+    }
+
     // 1. ERASER TOOL: Click drawing to delete
     if (tool === "eraser") {
       const closestId = findClosestDrawing(mouseX, mouseY, 16);
@@ -1016,7 +1145,38 @@ export default function FootprintPage() {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     const layout = layoutRef.current;
-    const { left = 6, priceW = 74, top = 6, plotW = Math.max(100, rect.width - 80), plotH = Math.max(100, rect.height - 80), maxP = 0, spanP = 1, tick = 0.25 } = layout || {};
+    const { left = 6, priceW = 74, top = 6, plotW = Math.max(100, rect.width - 80), plotH = Math.max(100, rect.height - 80), maxP = 0, minP = 0, spanP = 1, tick = 0.25 } = layout || {};
+    const scaleX = left + plotW;
+
+    // 0. Active Price Scale Dragging (Vertical Zoom / Stretch)
+    if (priceDragRef.current && layout) {
+      const { startY, minP: origMin, maxP: origMax, grabPrice } = priceDragRef.current;
+      const deltaY = e.clientY - startY;
+      // Dragging down (deltaY > 0) compresses price scale (zoom out)
+      // Dragging up (deltaY < 0) stretches price scale (zoom in)
+      const factor = Math.exp(deltaY / (Math.max(120, plotH) * 0.65));
+      const origSpan = origMax - origMin;
+      const newSpan = Math.max(tick * 3, origSpan * factor);
+
+      const grabRatio = origSpan > 0 ? (grabPrice - origMin) / origSpan : 0.5;
+      const newMin = grabPrice - newSpan * grabRatio;
+      const newMax = grabPrice + newSpan * (1 - grabRatio);
+
+      setCustomPriceRange({ min: newMin, max: newMax });
+      canvas.style.cursor = "ns-resize";
+      return;
+    }
+
+    // Dynamic Cursor Update
+    if (mouseX >= scaleX) {
+      canvas.style.cursor = "ns-resize";
+    } else if (tool === "eraser") {
+      canvas.style.cursor = "pointer";
+    } else if (tool === "arrow" || tool === "trend" || tool === "cross") {
+      canvas.style.cursor = "crosshair";
+    } else {
+      canvas.style.cursor = "default";
+    }
 
     const index = Math.floor(view.from + ((mouseX - left) / plotW) * view.count);
 
@@ -1027,10 +1187,13 @@ export default function FootprintPage() {
     }
 
     // Calculate crosshair price & time
-    if (mouseX >= left && mouseX <= left + plotW && mouseY >= top && mouseY <= top + plotH) {
+    if (mouseX >= left && mouseX <= scaleX && mouseY >= top && mouseY <= top + plotH) {
       const price = layout?.yToPrice ? layout.yToPrice(mouseY) : snap(maxP - ((mouseY - top) / Math.max(1, plotH)) * spanP, tick);
       const time = index >= 0 && index < bars.length ? bars[index].time : undefined;
       setHoverCoord({ x: mouseX, y: mouseY, price, time });
+    } else if (mouseX > scaleX && mouseY >= top && mouseY <= top + plotH) {
+      const price = layout?.yToPrice ? layout.yToPrice(mouseY) : snap(maxP - ((mouseY - top) / Math.max(1, plotH)) * spanP, tick);
+      setHoverCoord((prev) => (prev ? { ...prev, y: mouseY, price } : { x: mouseX, y: mouseY, price }));
     } else {
       setHoverCoord(null);
     }
@@ -1068,6 +1231,10 @@ export default function FootprintPage() {
   };
 
   const handlePointerUp = () => {
+    if (priceDragRef.current) {
+      priceDragRef.current = null;
+    }
+
     if (isDrawingRef.current && activeDrawing) {
       isDrawingRef.current = false;
       const dist = Math.hypot(
@@ -1083,6 +1250,20 @@ export default function FootprintPage() {
     }
 
     dragRef.current = null;
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const layout = layoutRef.current;
+    const scaleX = layout ? layout.left + layout.plotW : rect.width - 78;
+
+    if (mouseX >= scaleX || e.shiftKey) {
+      setCustomPriceRange(null);
+      showToast("Price scale auto-fitted");
+    }
   };
 
   // Compute Active Bar Stats
@@ -1320,9 +1501,10 @@ export default function FootprintPage() {
           )}
 
           <div className="fp-legend-pill">
-            <span className="fp-legend-poc">■ POC (Point of Control)</span>
-            <span className="fp-legend-bid" style={{ color: settings.negColor }}>■ Left (Bid / Sells)</span>
-            <span className="fp-legend-ask" style={{ color: settings.posColor }}>■ Right (Ask / Buys)</span>
+            <span className="fp-legend-poc">■ POC</span>
+            <span className="fp-legend-bid" style={{ color: settings.negColor }}>■ Left (Bid)</span>
+            <span className="fp-legend-ask" style={{ color: settings.posColor }}>■ Right (Ask)</span>
+            <span className="fp-legend-scale-hint">· Drag right scale ↕ to zoom price</span>
           </div>
 
           <canvas
@@ -1331,6 +1513,7 @@ export default function FootprintPage() {
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onDoubleClick={handleDoubleClick}
             onPointerLeave={() => {
               handlePointerUp();
               setHoverIndex(null);

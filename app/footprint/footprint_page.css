@@ -428,6 +428,12 @@
   color: var(--fp-red);
 }
 
+.fp-legend-scale-hint {
+  color: var(--fp-text-muted);
+  font-size: 10px;
+  opacity: 0.85;
+}
+
 /* Toast Pill Notification */
 .fp-toast-pill {
   position: absolute;
