@@ -106,6 +106,70 @@
   border: 0;
 }
 
+/* Footprint Header Nav Button & Copy Button */
+.candle-fp-nav-group {
+  display: inline-flex;
+  align-items: center;
+  background: #f0b429;
+  border: 1px solid #d97706;
+  border-radius: 6px;
+  padding: 1px;
+  gap: 1px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.candle-fp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  background: #f0b429;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 5px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.candle-fp-btn:hover {
+  background: #111827;
+  color: #f0b429;
+}
+
+.candle-fp-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 6px !important;
+  background: rgba(0, 0, 0, 0.08) !important;
+  border: none !important;
+  color: #111827 !important;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.candle-fp-copy-btn:hover {
+  background: #111827 !important;
+  color: #f0b429 !important;
+}
+
+.candle-fp-copy-btn.is-copied {
+  background: #15803d !important;
+  color: #ffffff !important;
+}
+
+.candle-copied-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  padding: 0 4px;
+}
+
 .candle-user {
   position: relative;
   display: inline-flex;
@@ -304,10 +368,28 @@
   .candle-controls,
   .candle-toggles,
   .candle-footer-left button:nth-child(n + 3),
-  .candle-top-actions button,
+  .candle-top-actions > button,
   .candle-tools,
   .candle-hint {
     display: none;
+  }
+
+  .candle-fp-nav-group {
+    display: inline-flex !important;
+    flex-shrink: 0;
+  }
+
+  .candle-fp-btn {
+    display: inline-flex !important;
+    padding: 0 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .candle-fp-copy-btn {
+    display: inline-flex !important;
+    min-width: 26px;
+    height: 26px;
   }
 
   .candle-body {

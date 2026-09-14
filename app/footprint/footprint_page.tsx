@@ -32,13 +32,34 @@ const INSTRUMENTS = [
 const TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h"] as const;
 type Timeframe = (typeof TIMEFRAMES)[number];
 
+export type DrawingItem = {
+  id: string;
+  type: "arrow";
+  start: {
+    x: number;
+    y: number;
+    price?: number;
+    index?: number;
+    time?: number;
+  };
+  end: {
+    x: number;
+    y: number;
+    price?: number;
+    index?: number;
+    time?: number;
+  };
+  color: string;
+  lineWidth: number;
+};
+
 const DRAW_TOOLS = [
-  { id: "cross", label: "Crosshair", icon: "+" },
-  { id: "trend", label: "Trend line", icon: "╱" },
+  { id: "cross", label: "Crosshair (Inspect Coordinates)", icon: "+" },
+  { id: "arrow", label: "Arrow Tool (Draw Annotation)", icon: "↗" },
+  { id: "eraser", label: "Eraser (Click to Delete)", icon: "⌫" },
   { id: "rect", label: "Box / Zone", icon: "▢" },
   { id: "fib", label: "Fibonacci", icon: "≡" },
   { id: "text", label: "Note / Text", icon: "T" },
-  { id: "trash", label: "Clear Drawings", icon: "⌫" },
 ];
 
 function seeded(seed: number) {
@@ -147,19 +168,126 @@ function generateFootprintData(instrument = INSTRUMENTS[0]): FootprintBar[] {
   return bars;
 }
 
+function hexToRgba(hex: string, alpha: number) {
+  const cleanHex = hex.replace("#", "");
+  let r = 239, g = 68, b = 68;
+  if (cleanHex.length === 6) {
+    r = parseInt(cleanHex.substring(0, 2), 16);
+    g = parseInt(cleanHex.substring(2, 4), 16);
+    b = parseInt(cleanHex.substring(4, 6), 16);
+  } else if (cleanHex.length === 3) {
+    r = parseInt(cleanHex[0] + cleanHex[0], 16);
+    g = parseInt(cleanHex[1] + cleanHex[1], 16);
+    b = parseInt(cleanHex[2] + cleanHex[2], 16);
+  }
+  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
+}
+
+type FootprintSettings = {
+  barType: string;
+  interval: string;
+  barWidth: number;
+  smartScaling: boolean;
+  autoScaling: boolean;
+  backgroundType: string;
+  posColor: string;
+  negColor: string;
+  useShades: boolean;
+  transparency: number;
+  bgRightAligned: boolean;
+  footprintType: string;
+  showText: boolean;
+  textPosColor: string;
+  textNegColor: string;
+  maxFontSize: number;
+  textRightAligned: boolean;
+  cryptoRounding: string;
+  tickMultiplier: number;
+  showBarStats: boolean;
+  showStatsLegend: boolean;
+  statsOffset: number;
+  maxDelta: boolean;
+  delta: boolean;
+  pullbackDelta: boolean;
+  minDelta: boolean;
+  barHeight: boolean;
+  sumBidVol: boolean;
+  sumAskVol: boolean;
+  sumVol: boolean;
+  sumBidTrades: boolean;
+  sumAskTrades: boolean;
+  sumTrades: boolean;
+};
+
+const DEFAULT_SETTINGS: FootprintSettings = {
+  barType: "Time Interval",
+  interval: "30 Seconds",
+  barWidth: 80,
+  smartScaling: false,
+  autoScaling: false,
+  backgroundType: "Histogram/BS",
+  posColor: "#22c55e",
+  negColor: "#ef4444",
+  useShades: true,
+  transparency: 0.75,
+  bgRightAligned: false,
+  footprintType: "BxS",
+  showText: true,
+  textPosColor: "#ffffff",
+  textNegColor: "#ffffff",
+  maxFontSize: 16,
+  textRightAligned: true,
+  cryptoRounding: "10",
+  tickMultiplier: 2,
+  showBarStats: true,
+  showStatsLegend: true,
+  statsOffset: 0,
+  maxDelta: true,
+  delta: true,
+  pullbackDelta: true,
+  minDelta: true,
+  barHeight: true,
+  sumBidVol: true,
+  sumAskVol: true,
+  sumVol: true,
+  sumBidTrades: true,
+  sumAskTrades: true,
+  sumTrades: true,
+};
+
 export default function FootprintPage() {
   const [userInitial, setUserInitial] = useState("G");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [instrument, setInstrument] = useState(INSTRUMENTS[0]);
   const [timeframe, setTimeframe] = useState<Timeframe>("5m");
   const [tool, setTool] = useState("cross");
+  const [drawings, setDrawings] = useState<DrawingItem[]>([]);
+  const [activeDrawing, setActiveDrawing] = useState<DrawingItem | null>(null);
+  const isDrawingRef = useRef(false);
+  const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number; price: number; time?: number } | null>(null);
+  const [hoveredDrawingId, setHoveredDrawingId] = useState<string | null>(null);
+  const [arrowColor, setArrowColor] = useState<string>("#f0b429");
+  const [arrowWidth, setArrowWidth] = useState<number>(2);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToast(msg);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+    }, 2200);
+  }, []);
+
   const [imbalanceRatio, setImbalanceRatio] = useState(3.0); // 300%
   const [showDelta, setShowDelta] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [clock, setClock] = useState("");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [hoverPrice, setHoverPrice] = useState<number | null>(null);
-  const [view, setView] = useState({ from: 10, count: 10 });
+  const [view, setView] = useState({ from: 15, count: 8 });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<FootprintSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -174,7 +302,33 @@ export default function FootprintPage() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const layoutRef = useRef({ left: 8, priceW: 78 });
+  const layoutRef = useRef<{
+    left: number;
+    priceW: number;
+    top: number;
+    plotW: number;
+    plotH: number;
+    minP: number;
+    maxP: number;
+    spanP: number;
+    tick: number;
+    barW: number;
+    xAt?: (idx: number) => number;
+    yAt?: (p: number) => number;
+    xToIdx?: (pixelX: number) => number;
+    yToPrice?: (pixelY: number) => number;
+  }>({
+    left: 8,
+    priceW: 78,
+    top: 6,
+    plotW: 100,
+    plotH: 100,
+    minP: 0,
+    maxP: 100,
+    spanP: 100,
+    tick: 0.25,
+    barW: 80,
+  });
   const dragRef = useRef<{ x: number; y: number; from: number; pinch?: number; count?: number } | null>(null);
 
   const bars = useMemo(() => generateFootprintData(instrument), [instrument]);
@@ -205,8 +359,8 @@ export default function FootprintPage() {
   // View bounds & zooming
   const clampView = useCallback(
     (from: number, count: number) => {
-      const minCount = 5;
-      const maxCount = 20;
+      const minCount = 4;
+      const maxCount = 14;
       const nextCount = Math.min(bars.length, maxCount, Math.max(minCount, count));
       const nextFrom = Math.min(Math.max(0, from), Math.max(0, bars.length - nextCount));
       return { from: nextFrom, count: nextCount };
@@ -233,7 +387,7 @@ export default function FootprintPage() {
   );
 
   const resetZoom = useCallback(() => {
-    setView({ from: Math.max(0, bars.length - 11), count: 11 });
+    setView({ from: Math.max(0, bars.length - 8), count: 8 });
   }, [bars.length]);
 
   // Main Canvas Rendering for Exact MotiveWave Footprint
@@ -297,8 +451,6 @@ export default function FootprintPage() {
       const plotW = Math.max(100, width - left - priceW);
       const plotH = Math.max(100, height - top - deltaH - timeH - 8);
 
-      layoutRef.current = { left, priceW };
-
       const visibleBars = bars.slice(
         Math.max(0, Math.floor(view.from)),
         Math.min(bars.length, Math.ceil(view.from + view.count))
@@ -315,6 +467,25 @@ export default function FootprintPage() {
       const barW = plotW / view.count;
       const xAt = (idx: number) => left + (idx - view.from + 0.5) * barW;
       const yAt = (p: number) => top + ((maxP - p) / spanP) * plotH;
+      const xToIdx = (pixelX: number) => view.from + ((pixelX - left) / plotW) * view.count - 0.5;
+      const yToPrice = (pixelY: number) => snap(maxP - ((pixelY - top) / plotH) * spanP, tick);
+
+      layoutRef.current = {
+        left,
+        priceW,
+        top,
+        plotW,
+        plotH,
+        minP,
+        maxP,
+        spanP,
+        tick,
+        barW,
+        xAt,
+        yAt,
+        xToIdx,
+        yToPrice,
+      };
 
       // Horizontal Grid lines & Price Labels
       const gridStep = tick * (compact ? 4 : 2);
@@ -369,14 +540,18 @@ export default function FootprintPage() {
         const isUp = bar.close >= bar.open;
         const candleColor = isUp ? colors.upBorder : colors.downBorder;
 
-        // Centered column width and bounds
-        const bodyWidth = Math.max(28, Math.min(barW * 0.94, barW - 4));
+        // Centered column width with generous breathing room between adjacent candle bars
+        const bodyWidth = Math.max(34, Math.min(barW * 0.70, barW - 24));
         const bodyLeft = x - bodyWidth / 2;
 
-        // Identify Point of Control (POC) and Max Level Volume for scaling
+        // Identify Point of Control (POC) and Max Level Volumes for dynamic heatmap scaling
         let pocLevel = bar.levels[0];
-        let maxVolume = 0;
+        let maxVolume = 1;
+        let maxBid = 1;
+        let maxAsk = 1;
         for (const lvl of bar.levels) {
+          if (lvl.bid > maxBid) maxBid = lvl.bid;
+          if (lvl.ask > maxAsk) maxAsk = lvl.ask;
           const vol = lvl.bid + lvl.ask;
           if (vol > maxVolume) {
             maxVolume = vol;
@@ -384,98 +559,127 @@ export default function FootprintPage() {
           }
         }
 
-        // 3. Render Each Footprint Level Row with Volume Background & Yellow POC Box
+        // Draw Candle Wick behind levels
+        const highY = yAt(bar.high);
+        const lowY = yAt(bar.low);
+        ctx.strokeStyle = candleColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, highY);
+        ctx.lineTo(x, lowY);
+        ctx.stroke();
+
+        // 3. Render Each Footprint Level Row with Split Left (Red) / Right (Green) Heatmaps
         const rowHeight = Math.max(13, Math.min(22, plotH / Math.max(1, (maxP - minP) / tick)));
+        const rowGap = 2;
+        const cellH = Math.max(11, rowHeight - rowGap);
+
+        // Gap separating Left (Red) and Right (Green) cells
+        const centerGap = 6;
+        const leftBoxW = Math.max(14, Math.floor((bodyWidth - centerGap) / 2));
+        const rightBoxW = leftBoxW;
+        const leftBoxX = x - centerGap / 2 - leftBoxW;
+        const rightBoxX = x + centerGap / 2;
+        const separatorX = x;
+
+        const drawBox = (bx: number, by: number, bw: number, bh: number, r = 2) => {
+          if (typeof ctx.roundRect === "function") {
+            ctx.beginPath();
+            ctx.roundRect(bx, by, bw, bh, r);
+            ctx.fill();
+          } else {
+            ctx.fillRect(bx, by, bw, bh);
+          }
+        };
 
         bar.levels.forEach((lvl, lvlIdx) => {
           const y = yAt(lvl.price);
-          const cellTop = y - rowHeight / 2;
-          const totalVol = lvl.bid + lvl.ask;
-          const volFraction = maxVolume > 0 ? Math.min(1, totalVol / maxVolume) : 0.5;
-          const bgBarWidth = Math.max(8, bodyWidth * (0.35 + volFraction * 0.65));
+          const cellTop = y - cellH / 2;
 
           const lowerLvl = bar.levels[lvlIdx + 1];
           const higherLvl = bar.levels[lvlIdx - 1];
           const isAskImbalanced = lowerLvl ? lvl.ask >= lowerLvl.bid * imbalanceRatio && lvl.ask > 40 : false;
           const isBidImbalanced = higherLvl ? lvl.bid >= higherLvl.ask * imbalanceRatio && lvl.bid > 40 : false;
           const isPoc = lvl.price === pocLevel.price;
-          const askDominant = lvl.ask >= lvl.bid;
 
-          // (A) Volume Profile horizontal background shading
-          if (isDark) {
-            if (isAskImbalanced) {
-              ctx.fillStyle = "rgba(34, 197, 94, 0.45)";
-            } else if (isBidImbalanced) {
-              ctx.fillStyle = "rgba(239, 68, 68, 0.45)";
-            } else if (askDominant) {
-              ctx.fillStyle = "rgba(34, 197, 94, 0.20)";
-            } else {
-              ctx.fillStyle = "rgba(239, 68, 68, 0.20)";
-            }
+          // (A) Left Side: Bid / Sell (Red Heatmap: Dull -> Light -> Dark)
+          if (lvl.bid > 0) {
+            const bidRatio = Math.min(1, lvl.bid / maxBid);
+            const rawAlpha = settings.useShades ? 0.10 + Math.pow(bidRatio, 0.65) * 0.76 : 0.65;
+            const bidAlpha = isBidImbalanced ? 0.95 : rawAlpha * settings.transparency;
+            ctx.fillStyle = hexToRgba(settings.negColor, bidAlpha);
+            drawBox(leftBoxX, cellTop, leftBoxW, cellH, 2);
           } else {
-            if (isAskImbalanced) {
-              ctx.fillStyle = "#86efac";
-            } else if (isBidImbalanced) {
-              ctx.fillStyle = "#fca5a5";
-            } else if (askDominant) {
-              ctx.fillStyle = "#dcfce7";
+            ctx.fillStyle = hexToRgba(settings.negColor, 0.03);
+            drawBox(leftBoxX, cellTop, leftBoxW, cellH, 2);
+          }
+
+          // (B) Right Side: Ask / Buy (Green Heatmap: Dull -> Light -> Dark)
+          if (lvl.ask > 0) {
+            const askRatio = Math.min(1, lvl.ask / maxAsk);
+            const rawAlpha = settings.useShades ? 0.10 + Math.pow(askRatio, 0.65) * 0.76 : 0.65;
+            const askAlpha = isAskImbalanced ? 0.95 : rawAlpha * settings.transparency;
+            ctx.fillStyle = hexToRgba(settings.posColor, askAlpha);
+            drawBox(rightBoxX, cellTop, rightBoxW, cellH, 2);
+          } else {
+            ctx.fillStyle = hexToRgba(settings.posColor, 0.03);
+            drawBox(rightBoxX, cellTop, rightBoxW, cellH, 2);
+          }
+
+          // (C) Yellow POC Box (Framing Point of Control Level with rounded outline)
+          if (isPoc) {
+            ctx.strokeStyle = colors.pocBox;
+            ctx.lineWidth = 2.0;
+            const pocLeft = leftBoxX - 2;
+            const pocW = rightBoxX + rightBoxW - leftBoxX + 4;
+            if (typeof ctx.roundRect === "function") {
+              ctx.beginPath();
+              ctx.roundRect(pocLeft, cellTop - 1, pocW, cellH + 2, 4);
+              ctx.stroke();
             } else {
-              ctx.fillStyle = "#fee2e2";
+              ctx.strokeRect(pocLeft, cellTop - 1, pocW, cellH + 2);
             }
           }
 
-          ctx.fillRect(bodyLeft, cellTop + 1, bgBarWidth, rowHeight - 2);
-
-          // (B) Yellow POC Box (Centered on Candle at Point of Control Level)
-          if (isPoc) {
-            // Subtle warm yellow highlight for POC row
-            ctx.fillStyle = colors.pocFill;
-            ctx.fillRect(bodyLeft, cellTop, bodyWidth, rowHeight);
-
-            // Bold yellow outline box framing the centered POC row
-            ctx.strokeStyle = colors.pocBox;
-            ctx.lineWidth = 2.4;
-            ctx.strokeRect(bodyLeft, cellTop, bodyWidth, rowHeight);
-          }
-
-          // (C) Bid X Ask Text Centered at x
-          if (bodyWidth >= 28) {
-            const fontSize = Math.max(9, Math.min(11.5, Math.floor(bodyWidth / 7.2)));
+          // (D) Bid X Ask Text Placement
+          if (settings.showText && bodyWidth >= 28) {
+            const fontSize = Math.max(8, Math.min(settings.maxFontSize, Math.floor(bodyWidth / 7.2)));
             ctx.font = `600 ${fontSize}px "IBM Plex Mono", Consolas, Menlo, monospace`;
             ctx.textBaseline = "middle";
 
             const bidStr = formatVol(lvl.bid);
             const askStr = formatVol(lvl.ask);
-            const textCenterX = x;
 
-            // Bid text
+            // Left side (Bid) text
             if (lvl.bid === 0) {
               ctx.fillStyle = colors.numZero;
             } else if (isBidImbalanced) {
-              ctx.fillStyle = colors.numBidImbalance;
+              ctx.fillStyle = "#ffffff";
             } else {
-              ctx.fillStyle = colors.numNormal;
+              ctx.fillStyle = settings.textNegColor || (isDark ? "#ffffff" : "#0f172a");
             }
-            ctx.textAlign = "right";
-            ctx.fillText(bidStr, textCenterX - 7, y);
+            ctx.textAlign = settings.textRightAligned ? "right" : "center";
+            const bidTextX = settings.textRightAligned ? leftBoxX + leftBoxW - 4 : leftBoxX + leftBoxW / 2;
+            ctx.fillText(bidStr, bidTextX, y);
 
-            // Separator 'X'
+            // Center 'x' separator in the gap
             ctx.fillStyle = colors.multiplierX;
-            ctx.font = `500 ${fontSize - 1}px monospace`;
+            ctx.font = `500 ${fontSize - 1.5}px monospace`;
             ctx.textAlign = "center";
-            ctx.fillText("X", textCenterX, y);
+            ctx.fillText("x", separatorX, y);
 
-            // Ask text
+            // Right side (Ask) text
             ctx.font = `600 ${fontSize}px "IBM Plex Mono", Consolas, Menlo, monospace`;
             if (lvl.ask === 0) {
               ctx.fillStyle = colors.numZero;
             } else if (isAskImbalanced) {
-              ctx.fillStyle = colors.numAskImbalance;
+              ctx.fillStyle = "#ffffff";
             } else {
-              ctx.fillStyle = colors.numNormal;
+              ctx.fillStyle = settings.textPosColor || (isDark ? "#ffffff" : "#0f172a");
             }
-            ctx.textAlign = "left";
-            ctx.fillText(askStr, textCenterX + 7, y);
+            ctx.textAlign = settings.textRightAligned ? "left" : "center";
+            const askTextX = settings.textRightAligned ? rightBoxX + 4 : rightBoxX + rightBoxW / 2;
+            ctx.fillText(askStr, askTextX, y);
           }
         });
 
@@ -553,7 +757,123 @@ export default function FootprintPage() {
       ctx.font = `bold 10px monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(formatPrice(lastBar.close, tick), left + plotW + (priceW - 4) / 2 + 2, lastY);
+      // 8. Render All Permanent Drawings + Active Live Preview Arrow
+      const allDrawings = activeDrawing ? [...drawings, activeDrawing] : drawings;
+
+      allDrawings.forEach((d) => {
+        if (d.type === "arrow") {
+          let sx = d.start.x;
+          let sy = d.start.y;
+          if (d.start.index !== undefined && d.start.price !== undefined) {
+            sx = xAt(d.start.index);
+            sy = yAt(d.start.price);
+          }
+
+          let ex = d.end.x;
+          let ey = d.end.y;
+          if (d.end.index !== undefined && d.end.price !== undefined) {
+            ex = xAt(d.end.index);
+            ey = yAt(d.end.price);
+          }
+
+          const isHoveredInEraser = tool === "eraser" && hoveredDrawingId === d.id;
+
+          ctx.save();
+          // Halo glow if hovered with eraser
+          if (isHoveredInEraser) {
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.45)";
+            ctx.lineWidth = (d.lineWidth || 2) + 8;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+          }
+
+          // Main line
+          ctx.strokeStyle = isHoveredInEraser ? "#ef4444" : d.color || "#f0b429";
+          ctx.lineWidth = d.lineWidth || 2;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+
+          // Arrowhead
+          const angle = Math.atan2(ey - sy, ex - sx);
+          const headLen = Math.max(10, (d.lineWidth || 2) * 4.5);
+          const headAngle = Math.PI / 6; // 30 degrees
+
+          ctx.fillStyle = isHoveredInEraser ? "#ef4444" : d.color || "#f0b429";
+          ctx.beginPath();
+          ctx.moveTo(ex, ey);
+          ctx.lineTo(
+            ex - headLen * Math.cos(angle - headAngle),
+            ey - headLen * Math.sin(angle - headAngle)
+          );
+          ctx.lineTo(
+            ex - headLen * Math.cos(angle + headAngle),
+            ey - headLen * Math.sin(angle + headAngle)
+          );
+          ctx.closePath();
+          ctx.fill();
+
+          // Start dot anchor
+          ctx.beginPath();
+          ctx.arc(sx, sy, Math.max(2.5, (d.lineWidth || 2) * 0.9), 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        }
+      });
+
+      // 9. Interactive Crosshair Lines & Axis Coordinate Badges (Temporary, on Pointer Move)
+      if (tool === "cross" && hoverCoord) {
+        const { x: hx, y: hy, price, time } = hoverCoord;
+
+        if (hx >= left && hx <= left + plotW && hy >= top && hy <= top + plotH) {
+          ctx.save();
+          ctx.setLineDash([4, 3]);
+          ctx.strokeStyle = colors.crosshair;
+          ctx.lineWidth = 1;
+
+          // Horizontal line across complete plot
+          ctx.beginPath();
+          ctx.moveTo(left, hy);
+          ctx.lineTo(left + plotW, hy);
+          ctx.stroke();
+
+          // Vertical line across complete plot
+          ctx.beginPath();
+          ctx.moveTo(hx, top);
+          ctx.lineTo(hx, top + plotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Price badge on right axis
+          ctx.fillStyle = "#f0b429";
+          ctx.fillRect(left + plotW + 2, hy - 9, priceW - 4, 18);
+          ctx.fillStyle = "#111111";
+          ctx.font = `bold 10px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(formatPrice(price, tick), left + plotW + (priceW - 4) / 2 + 2, hy);
+
+          // Time badge on bottom axis
+          if (time) {
+            const timeStr = formatAxisTime(time);
+            ctx.fillStyle = isDark ? "#23293a" : "#cbd5e1";
+            ctx.fillRect(hx - 28, top + plotH + 3, 56, 17);
+            ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+            ctx.font = `bold 9.5px ui-sans-serif, Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(timeStr, hx, top + plotH + 11.5);
+          }
+          ctx.restore();
+        }
+      }
     };
 
     render();
@@ -570,10 +890,113 @@ export default function FootprintPage() {
       observer.disconnect();
       wrap.removeEventListener("wheel", onWheel);
     };
-  }, [bars, clampView, hoverIndex, imbalanceRatio, instrument.tick, lastBar, showDelta, theme, view, zoom]);
+  }, [activeDrawing, bars, clampView, drawings, hoverCoord, hoveredDrawingId, hoverIndex, imbalanceRatio, instrument.tick, lastBar, settings, showDelta, theme, tool, view, zoom]);
+
+  // Distance from point (px, py) to line segment (x1, y1) -> (x2, y2)
+  const distToSegment = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const l2 = dx * dx + dy * dy;
+    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+    let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const projX = x1 + t * dx;
+    const projY = y1 + t * dy;
+    return Math.hypot(px - projX, py - projY);
+  };
+
+  // Find drawing closest to a pixel coordinate
+  const findClosestDrawing = (mouseX: number, mouseY: number, maxDistance = 16) => {
+    const layout = layoutRef.current;
+    if (!layout || drawings.length === 0) return null;
+
+    let closestId: string | null = null;
+    let minDist = Infinity;
+
+    drawings.forEach((d) => {
+      let sx = d.start.x;
+      let sy = d.start.y;
+      if (d.start.index !== undefined && d.start.price !== undefined && layout.xAt && layout.yAt) {
+        sx = layout.xAt(d.start.index);
+        sy = layout.yAt(d.start.price);
+      }
+
+      let ex = d.end.x;
+      let ey = d.end.y;
+      if (d.end.index !== undefined && d.end.price !== undefined && layout.xAt && layout.yAt) {
+        ex = layout.xAt(d.end.index);
+        ey = layout.yAt(d.end.price);
+      }
+
+      const dist = distToSegment(mouseX, mouseY, sx, sy, ex, ey);
+      if (dist < minDist && dist <= maxDistance) {
+        minDist = dist;
+        closestId = d.id;
+      }
+    });
+
+    return closestId;
+  };
+
+  const handleToolSelect = (toolId: string) => {
+    setTool(toolId);
+    if (toolId === "cross") {
+      showToast("Crosshair Mode — Inspect price & time coordinates");
+    } else if (toolId === "arrow" || toolId === "trend") {
+      showToast("Arrow Tool — Drag on chart to draw annotation arrow");
+    } else if (toolId === "eraser" || toolId === "trash") {
+      if (drawings.length === 0) {
+        showToast("Eraser Active — No drawings on chart yet");
+      } else {
+        showToast("Eraser Active — Click any drawing to delete");
+      }
+    }
+  };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const layout = layoutRef.current;
+
+    // 1. ERASER TOOL: Click drawing to delete
+    if (tool === "eraser") {
+      const closestId = findClosestDrawing(mouseX, mouseY, 16);
+      if (closestId) {
+        setDrawings((prev) => prev.filter((d) => d.id !== closestId));
+        setHoveredDrawingId(null);
+        showToast("Drawing erased");
+      } else {
+        showToast("No drawing found at click");
+      }
+      return;
+    }
+
+    // 2. ARROW TOOL: Press to start drawing
+    if (tool === "arrow" || tool === "trend") {
+      if (!layout) return;
+      const price = layout.yToPrice ? layout.yToPrice(mouseY) : undefined;
+      const index = layout.xToIdx ? layout.xToIdx(mouseX) : undefined;
+      const roundedIdx = index !== undefined ? Math.round(index) : 0;
+      const time = bars[Math.max(0, Math.min(bars.length - 1, roundedIdx))]?.time;
+
+      const newArrow: DrawingItem = {
+        id: `arrow-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type: "arrow",
+        start: { x: mouseX, y: mouseY, price, index, time },
+        end: { x: mouseX, y: mouseY, price, index, time },
+        color: arrowColor,
+        lineWidth: arrowWidth,
+      };
+      setActiveDrawing(newArrow);
+      isDrawingRef.current = true;
+      return;
+    }
+
+    // 3. CROSSHAIR / DEFAULT TOOL: Drag to pan chart
     dragRef.current = { x: e.clientX, y: e.clientY, from: view.from };
   };
 
@@ -581,9 +1004,12 @@ export default function FootprintPage() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const { left, priceW } = layoutRef.current;
-    const plotW = Math.max(100, rect.width - left - priceW);
-    const index = Math.floor(view.from + ((e.clientX - rect.left - left) / plotW) * view.count);
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const layout = layoutRef.current;
+    const { left = 6, priceW = 74, top = 6, plotW = Math.max(100, rect.width - 80), plotH = Math.max(100, rect.height - 80), maxP = 0, spanP = 1, tick = 0.25 } = layout || {};
+
+    const index = Math.floor(view.from + ((mouseX - left) / plotW) * view.count);
 
     if (index >= 0 && index < bars.length) {
       setHoverIndex(index);
@@ -591,12 +1017,62 @@ export default function FootprintPage() {
       setHoverIndex(null);
     }
 
-    if (!dragRef.current) return;
-    const deltaX = ((dragRef.current.x - e.clientX) / plotW) * view.count;
-    setView(clampView(dragRef.current.from + deltaX, view.count));
+    // Calculate crosshair price & time
+    if (mouseX >= left && mouseX <= left + plotW && mouseY >= top && mouseY <= top + plotH) {
+      const price = layout?.yToPrice ? layout.yToPrice(mouseY) : snap(maxP - ((mouseY - top) / Math.max(1, plotH)) * spanP, tick);
+      const time = index >= 0 && index < bars.length ? bars[index].time : undefined;
+      setHoverCoord({ x: mouseX, y: mouseY, price, time });
+    } else {
+      setHoverCoord(null);
+    }
+
+    // If currently dragging to draw an arrow:
+    if (isDrawingRef.current && activeDrawing) {
+      const price = layout?.yToPrice ? layout.yToPrice(mouseY) : undefined;
+      const idx = layout?.xToIdx ? layout.xToIdx(mouseX) : undefined;
+      const roundedIdx = idx !== undefined ? Math.round(idx) : 0;
+      const time = bars[Math.max(0, Math.min(bars.length - 1, roundedIdx))]?.time;
+
+      setActiveDrawing((prev) =>
+        prev
+          ? {
+              ...prev,
+              end: { x: mouseX, y: mouseY, price, index: idx, time },
+            }
+          : null
+      );
+      return;
+    }
+
+    // In eraser mode: detect closest drawing to highlight
+    if (tool === "eraser") {
+      const closestId = findClosestDrawing(mouseX, mouseY, 16);
+      setHoveredDrawingId(closestId);
+      return;
+    }
+
+    // If dragging to pan chart:
+    if (dragRef.current) {
+      const deltaX = ((dragRef.current.x - e.clientX) / plotW) * view.count;
+      setView(clampView(dragRef.current.from + deltaX, view.count));
+    }
   };
 
   const handlePointerUp = () => {
+    if (isDrawingRef.current && activeDrawing) {
+      isDrawingRef.current = false;
+      const dist = Math.hypot(
+        activeDrawing.end.x - activeDrawing.start.x,
+        activeDrawing.end.y - activeDrawing.start.y
+      );
+      if (dist > 4) {
+        setDrawings((prev) => [...prev, activeDrawing]);
+        showToast("Arrow saved");
+      }
+      setActiveDrawing(null);
+      return;
+    }
+
     dragRef.current = null;
   };
 
@@ -671,6 +1147,21 @@ export default function FootprintPage() {
 
         {/* Action Controls & Theme Toggle */}
         <div className="fp-header-right">
+          {/* Settings Trigger Icon Button */}
+          <button
+            type="button"
+            className={`fp-settings-toggle-btn${isSettingsOpen ? " is-active" : ""}`}
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            title="Parameters / Footprint Settings"
+            aria-label="Open Footprint Parameters"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            <span className="fp-settings-text">Settings</span>
+          </button>
+
           {/* Dark / Light Theme Switcher */}
           <button
             type="button"
@@ -753,7 +1244,7 @@ export default function FootprintPage() {
               key={t.id}
               type="button"
               className={`fp-tool-btn${tool === t.id ? " is-active" : ""}`}
-              onClick={() => setTool(t.id)}
+              onClick={() => handleToolSelect(t.id)}
               title={t.label}
               aria-label={t.label}
             >
@@ -764,10 +1255,65 @@ export default function FootprintPage() {
 
         {/* Footprint Chart Canvas Area */}
         <div className="fp-canvas-container" ref={wrapRef}>
+          {/* Toast Notification Pill */}
+          {toast && <div className="fp-toast-pill">{toast}</div>}
+
+          {/* Floating Drawing Customizer Toolbar (Arrow Settings & Clear All) */}
+          {(tool === "arrow" || tool === "trend" || drawings.length > 0) && (
+            <div className="fp-drawing-toolbar">
+              <span style={{ color: "var(--fp-accent)", fontWeight: 700, fontSize: "10.5px" }}>Arrow:</span>
+              <div className="fp-draw-colors">
+                {["#f0b429", "#38bdf8", "#22c55e", "#ef4444", "#ffffff"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`fp-draw-color-btn${arrowColor === c ? " is-active" : ""}`}
+                    style={{ backgroundColor: c }}
+                    onClick={() => setArrowColor(c)}
+                    title={`Color ${c}`}
+                  />
+                ))}
+              </div>
+
+              <div className="fp-draw-divider" />
+
+              <div className="fp-draw-widths">
+                {[1.5, 2, 3].map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    className={`fp-draw-width-btn${arrowWidth === w ? " is-active" : ""}`}
+                    onClick={() => setArrowWidth(w)}
+                    title={`${w}px Line Width`}
+                  >
+                    {w}px
+                  </button>
+                ))}
+              </div>
+
+              {drawings.length > 0 && (
+                <>
+                  <div className="fp-draw-divider" />
+                  <button
+                    type="button"
+                    className="fp-draw-clear-btn"
+                    onClick={() => {
+                      setDrawings([]);
+                      showToast("All drawings cleared");
+                    }}
+                    title="Clear All Annotations"
+                  >
+                    Clear All ({drawings.length})
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="fp-legend-pill">
             <span className="fp-legend-poc">■ POC (Point of Control)</span>
-            <span className="fp-legend-ask">■ Ask Imbalance (Buy)</span>
-            <span className="fp-legend-bid">■ Bid Imbalance (Sell)</span>
+            <span className="fp-legend-bid" style={{ color: settings.negColor }}>■ Left (Bid / Sells)</span>
+            <span className="fp-legend-ask" style={{ color: settings.posColor }}>■ Right (Ask / Buys)</span>
           </div>
 
           <canvas
@@ -779,6 +1325,8 @@ export default function FootprintPage() {
             onPointerLeave={() => {
               handlePointerUp();
               setHoverIndex(null);
+              setHoverCoord(null);
+              setHoveredDrawingId(null);
             }}
           />
 
@@ -806,7 +1354,7 @@ export default function FootprintPage() {
         <aside className="fp-right-rail">
           <div className="fp-rail-tab is-active">DOM</div>
           <div className="fp-rail-tab">Options</div>
-          <div className="fp-rail-tab">Tools</div>
+          <div className="fp-rail-tab" onClick={() => setIsSettingsOpen(true)}>Settings</div>
           <div className="fp-rail-tab">Broker</div>
         </aside>
       </div>
@@ -831,6 +1379,13 @@ export default function FootprintPage() {
             />
             Bar Chart
           </label>
+          <button
+            type="button"
+            className={`fp-toggle-pill${isSettingsOpen ? " is-active" : ""}`}
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+          >
+            ⚙ Parameters
+          </button>
         </div>
 
         <div className="fp-footer-right">
@@ -845,6 +1400,443 @@ export default function FootprintPage() {
           </button>
         </div>
       </footer>
+
+      {/* Settings Backdrop */}
+      {isSettingsOpen && (
+        <div
+          className="fp-drawer-backdrop"
+          onClick={() => setIsSettingsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Parameters Settings Drawer (Right-to-Left on Desktop, Bottom-to-Top on Mobile) */}
+      <aside
+        className={`fp-settings-drawer${isSettingsOpen ? " is-open" : ""}`}
+        aria-label="Parameters Drawer"
+      >
+        <div className="fp-drawer-handle" />
+
+        <div className="fp-drawer-header">
+          <div className="fp-drawer-title">
+            <span>Parameters (v1.2.2)</span>
+          </div>
+          <button
+            type="button"
+            className="fp-drawer-close"
+            onClick={() => setIsSettingsOpen(false)}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="fp-drawer-body">
+          {/* Footprint Bar Type */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Footprint Bar Type:</span>
+            <div className="fp-param-control">
+              <select
+                value={settings.barType}
+                onChange={(e) => setSettings({ ...settings, barType: e.target.value })}
+              >
+                <option value="Time Interval">Time Interval</option>
+                <option value="Volume Bar">Volume Bar</option>
+                <option value="Tick Bar">Tick Bar</option>
+                <option value="Delta Bar">Delta Bar</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Footprint Interval */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Footprint Interval:</span>
+            <div className="fp-param-control">
+              <select
+                value={settings.interval}
+                onChange={(e) => setSettings({ ...settings, interval: e.target.value })}
+              >
+                <option value="30 Seconds">30 Seconds</option>
+                <option value="1 Minute">1 Minute</option>
+                <option value="5 Minutes">5 Minutes</option>
+                <option value="15 Minutes">15 Minutes</option>
+                <option value="1 Hour">1 Hour</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Bar width (px) */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Bar width (px):</span>
+            <div className="fp-param-control">
+              <input
+                type="number"
+                value={settings.barWidth}
+                onChange={(e) => setSettings({ ...settings, barWidth: Number(e.target.value) || 80 })}
+              />
+            </div>
+          </div>
+
+          {/* Horizontal Smart Scaling */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Horizontal Smart Scaling:</span>
+            <div className="fp-param-control">
+              <input
+                type="checkbox"
+                checked={settings.smartScaling}
+                onChange={(e) => setSettings({ ...settings, smartScaling: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          {/* AutoScaling */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">AutoScaling:</span>
+            <div className="fp-param-control">
+              <input
+                type="checkbox"
+                checked={settings.autoScaling}
+                onChange={(e) => setSettings({ ...settings, autoScaling: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          {/* Background Type */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Background Type:</span>
+            <div className="fp-param-control">
+              <select
+                value={settings.backgroundType}
+                onChange={(e) => setSettings({ ...settings, backgroundType: e.target.value })}
+              >
+                <option value="Histogram/BS">Histogram/BS</option>
+                <option value="Split Heatmap">Split Heatmap</option>
+                <option value="Solid Color">Solid Color</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Positive color */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Positive color:</span>
+            <div className="fp-param-control fp-color-row">
+              <span className="fp-color-dot" style={{ backgroundColor: settings.posColor }} />
+              <button
+                type="button"
+                className="fp-icon-btn"
+                title="Edit Color"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "color";
+                  input.value = settings.posColor;
+                  input.onchange = (e) => setSettings({ ...settings, posColor: (e.target as HTMLInputElement).value });
+                  input.click();
+                }}
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
+                className="fp-icon-btn"
+                title="Reset Color"
+                onClick={() => setSettings({ ...settings, posColor: "#22c55e" })}
+              >
+                ↺
+              </button>
+            </div>
+          </div>
+
+          {/* Negative color */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Negative color:</span>
+            <div className="fp-param-control fp-color-row">
+              <span className="fp-color-dot" style={{ backgroundColor: settings.negColor }} />
+              <button
+                type="button"
+                className="fp-icon-btn"
+                title="Edit Color"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "color";
+                  input.value = settings.negColor;
+                  input.onchange = (e) => setSettings({ ...settings, negColor: (e.target as HTMLInputElement).value });
+                  input.click();
+                }}
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
+                className="fp-icon-btn"
+                title="Reset Color"
+                onClick={() => setSettings({ ...settings, negColor: "#ef4444" })}
+              >
+                ↺
+              </button>
+            </div>
+          </div>
+
+          {/* Use shades */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Use shades:</span>
+            <div className="fp-param-control">
+              <input
+                type="checkbox"
+                checked={settings.useShades}
+                onChange={(e) => setSettings({ ...settings, useShades: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          {/* Transparency factor */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Transparency factor:</span>
+            <div className="fp-param-control fp-slider-control">
+              <input
+                type="range"
+                min="0.1"
+                max="1.0"
+                step="0.05"
+                value={settings.transparency}
+                onChange={(e) => setSettings({ ...settings, transparency: parseFloat(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          {/* Is background right aligned */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Is background right aligned:</span>
+            <div className="fp-param-control">
+              <input
+                type="checkbox"
+                checked={settings.bgRightAligned}
+                onChange={(e) => setSettings({ ...settings, bgRightAligned: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          {/* Footprint Type */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Footprint Type:</span>
+            <div className="fp-param-control">
+              <select
+                value={settings.footprintType}
+                onChange={(e) => setSettings({ ...settings, footprintType: e.target.value })}
+              >
+                <option value="BxS">BxS</option>
+                <option value="Delta">Delta</option>
+                <option value="Volume">Volume</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Show text */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Show text:</span>
+            <div className="fp-param-control">
+              <input
+                type="checkbox"
+                checked={settings.showText}
+                onChange={(e) => setSettings({ ...settings, showText: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          {/* Text positive color */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Text positive color:</span>
+            <div className="fp-param-control fp-color-row">
+              <span className="fp-color-dot" style={{ backgroundColor: settings.textPosColor }} />
+              <button
+                type="button"
+                className="fp-icon-btn"
+                title="Edit Color"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "color";
+                  input.value = settings.textPosColor;
+                  input.onchange = (e) => setSettings({ ...settings, textPosColor: (e.target as HTMLInputElement).value });
+                  input.click();
+                }}
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
+                className="fp-icon-btn"
+                title="Reset Color"
+                onClick={() => setSettings({ ...settings, textPosColor: "#ffffff" })}
+              >
+                ↺
+              </button>
+            </div>
+          </div>
+
+          {/* Text negative color */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Text negative color:</span>
+            <div className="fp-param-control fp-color-row">
+              <span className="fp-color-dot" style={{ backgroundColor: settings.textNegColor }} />
+              <button
+                type="button"
+                className="fp-icon-btn"
+                title="Edit Color"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "color";
+                  input.value = settings.textNegColor;
+                  input.onchange = (e) => setSettings({ ...settings, textNegColor: (e.target as HTMLInputElement).value });
+                  input.click();
+                }}
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
+                className="fp-icon-btn"
+                title="Reset Color"
+                onClick={() => setSettings({ ...settings, textNegColor: "#ffffff" })}
+              >
+                ↺
+              </button>
+            </div>
+          </div>
+
+          {/* Maximum font size */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Maximum font size:</span>
+            <div className="fp-param-control">
+              <input
+                type="number"
+                min="8"
+                max="24"
+                value={settings.maxFontSize}
+                onChange={(e) => setSettings({ ...settings, maxFontSize: Number(e.target.value) || 16 })}
+              />
+            </div>
+          </div>
+
+          {/* Is text right aligned */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Is text right aligned:</span>
+            <div className="fp-param-control">
+              <input
+                type="checkbox"
+                checked={settings.textRightAligned}
+                onChange={(e) => setSettings({ ...settings, textRightAligned: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          {/* Crypto rounding */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Crypto rounding:</span>
+            <div className="fp-param-control">
+              <select
+                value={settings.cryptoRounding}
+                onChange={(e) => setSettings({ ...settings, cryptoRounding: e.target.value })}
+              >
+                <option value="10">10</option>
+                <option value="1">1</option>
+                <option value="0.1">0.1</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Tick Multiplier */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Tick Multiplier:</span>
+            <div className="fp-param-control">
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={settings.tickMultiplier}
+                onChange={(e) => setSettings({ ...settings, tickMultiplier: Number(e.target.value) || 2 })}
+              />
+            </div>
+          </div>
+
+          {/* Show Bar Stats */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Show Bar Stats:</span>
+            <div className="fp-param-control">
+              <input
+                type="checkbox"
+                checked={settings.showBarStats}
+                onChange={(e) => setSettings({ ...settings, showBarStats: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          {/* Show Stats Legend */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Show Stats Legend:</span>
+            <div className="fp-param-control">
+              <input
+                type="checkbox"
+                checked={settings.showStatsLegend}
+                onChange={(e) => setSettings({ ...settings, showStatsLegend: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          {/* Stats Vertical Offset */}
+          <div className="fp-param-row">
+            <span className="fp-param-label">Stats Vertical Offset:</span>
+            <div className="fp-param-control">
+              <input
+                type="number"
+                value={settings.statsOffset}
+                onChange={(e) => setSettings({ ...settings, statsOffset: Number(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+
+          {/* Stats metrics checkboxes matching image 2 */}
+          {[
+            { key: "maxDelta", label: "Max Delta?" },
+            { key: "delta", label: "Delta?" },
+            { key: "pullbackDelta", label: "Pullback Delta?" },
+            { key: "minDelta", label: "Min Delta?" },
+            { key: "barHeight", label: "Bar Height?" },
+            { key: "sumBidVol", label: "Sum Bid Volume?" },
+            { key: "sumAskVol", label: "Sum Ask Volume?" },
+            { key: "sumVol", label: "Sum Volume?" },
+            { key: "sumBidTrades", label: "Sum Bid Trades?" },
+            { key: "sumAskTrades", label: "Sum Ask Trades?" },
+            { key: "sumTrades", label: "Sum Trades?" },
+          ].map(({ key, label }) => (
+            <div className="fp-param-row" key={key}>
+              <span className="fp-param-label">{label}</span>
+              <div className="fp-param-control">
+                <input
+                  type="checkbox"
+                  checked={(settings as any)[key]}
+                  onChange={(e) => setSettings({ ...settings, [key]: e.target.checked })}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="fp-drawer-footer">
+          <button
+            type="button"
+            className="fp-btn-reset-params"
+            onClick={() => setSettings(DEFAULT_SETTINGS)}
+          >
+            Reset Defaults
+          </button>
+          <button
+            type="button"
+            className="fp-btn-apply-params"
+            onClick={() => setIsSettingsOpen(false)}
+          >
+            Done
+          </button>
+        </div>
+      </aside>
     </div>
   );
 }

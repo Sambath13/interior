@@ -192,6 +192,20 @@ export default function CandlePage() {
   const [tool, setTool] = useState("cross");
   const [clock, setClock] = useState("");
   const [hover, setHover] = useState<Candle | null>(null);
+  const [copiedFootprint, setCopiedFootprint] = useState(false);
+
+  const handleCopyFootprint = () => {
+    if (typeof window !== "undefined") {
+      const url = `${window.location.origin}/footprint`;
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedFootprint(true);
+        setTimeout(() => setCopiedFootprint(false), 2000);
+      }).catch(() => {
+        setCopiedFootprint(true);
+        setTimeout(() => setCopiedFootprint(false), 2000);
+      });
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -561,6 +575,31 @@ export default function CandlePage() {
         </div>
 
         <div className="candle-top-actions">
+          <div className="candle-fp-nav-group">
+            <Link href="/footprint" className="candle-fp-btn" title="Navigate to Footprint Orderflow Chart">
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+                <path d="M2 3h4v10H2zm8 0h4v10h-4zM6 6h4v4H6z" />
+              </svg>
+              Footprint
+            </Link>
+            <button
+              type="button"
+              className={`candle-fp-copy-btn${copiedFootprint ? " is-copied" : ""}`}
+              onClick={handleCopyFootprint}
+              title={copiedFootprint ? "Footprint Link Copied!" : "Copy Footprint Link / Layout"}
+              aria-label="Copy Footprint"
+            >
+              {copiedFootprint ? (
+                <span className="candle-copied-text">✓ Copied</span>
+              ) : (
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              )}
+            </button>
+          </div>
+
           <button type="button" aria-label="Search">
             ⌕
           </button>
