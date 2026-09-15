@@ -76,9 +76,12 @@ function snap(price: number, step: number) {
 }
 
 function formatVol(value: number) {
-  if (value >= 10000) return `${(value / 1000).toFixed(value % 1000 ? 1 : 0)}K`;
-  if (value >= 1000) return `${(value / 1000).toFixed(1)}K`.replace(".0K", "K");
-  return String(Math.round(value));
+  const abs = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
+  if (abs >= 1000000) return `${sign}${(abs / 1000000).toFixed(1)}M`.replace(".0M", "M");
+  if (abs >= 10000) return `${sign}${(abs / 1000).toFixed(abs % 1000 ? 1 : 0)}K`;
+  if (abs >= 1000) return `${sign}${(abs / 1000).toFixed(1)}K`.replace(".0K", "K");
+  return `${sign}${Math.round(abs)}`;
 }
 
 function formatPrice(value: number, tick = 0.25) {
@@ -257,7 +260,6 @@ const DEFAULT_SETTINGS: FootprintSettings = {
 
 export default function FootprintPage() {
   const [userInitial, setUserInitial] = useState("G");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [instrument, setInstrument] = useState(INSTRUMENTS[0]);
   const [timeframe, setTimeframe] = useState<Timeframe>("5m");
   const [tool, setTool] = useState("cross");
@@ -280,7 +282,10 @@ export default function FootprintPage() {
   }, []);
 
   const [imbalanceRatio, setImbalanceRatio] = useState(3.0); // 300%
-  const [showDelta, setShowDelta] = useState(false);
+  const [showBarChart, setShowBarChart] = useState(false);
+  const [showTableChart, setShowTableChart] = useState(false);
+  const [isChartsDropdownOpen, setIsChartsDropdownOpen] = useState(false);
+  const chartsDropdownRef = useRef<HTMLDivElement>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [clock, setClock] = useState("");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -296,6 +301,20 @@ export default function FootprintPage() {
   const prevBar = bars[Math.max(0, (hoverIndex ?? bars.length - 1) - 1)] ?? lastBar;
   const priceChange = activeBar.close - prevBar.close;
   const changePct = (priceChange / prevBar.close) * 100;
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (chartsDropdownRef.current && !chartsDropdownRef.current.contains(e.target as Node)) {
+        setIsChartsDropdownOpen(false);
+      }
+    };
+    if (isChartsDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isChartsDropdownOpen]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -427,30 +446,27 @@ export default function FootprintPage() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
 
-      const isDark = theme === "dark";
-
-      // Palette definition
       const colors = {
-        bg: isDark ? "#06070a" : "#ffffff",
-        grid: isDark ? "#141722" : "#f1f5f9",
-        gridText: isDark ? "#626d7f" : "#94a3b8",
-        priceLadderBg: isDark ? "#0b0d14" : "#f8fafc",
-        priceLadderBorder: isDark ? "#1c202d" : "#e2e8f0",
-        priceText: isDark ? "#94a3b8" : "#475569",
+        bg: "#06070a",
+        grid: "#141722",
+        gridText: "#626d7f",
+        priceLadderBg: "#0b0d14",
+        priceLadderBorder: "#1c202d",
+        priceText: "#94a3b8",
         currentPriceBg: "#16a34a",
         currentPriceText: "#ffffff",
-        wick: isDark ? "#4b5563" : "#94a3b8",
-        upBorder: isDark ? "#22c55e" : "#16a34a",
-        downBorder: isDark ? "#ef4444" : "#dc2626",
-        pocBox: isDark ? "#facc15" : "#eab308",
-        pocFill: isDark ? "rgba(250, 204, 21, 0.12)" : "rgba(234, 179, 8, 0.14)",
-        numNormal: isDark ? "#ffffff" : "#0f172a",
-        numAskImbalance: isDark ? "#22c55e" : "#15803d",
-        numBidImbalance: isDark ? "#ef4444" : "#b91c1c",
-        numZero: isDark ? "#94a3b8" : "#94a3b8",
-        multiplierX: isDark ? "#64748b" : "#94a3b8",
-        deltaBarBg: isDark ? "#11141e" : "#f1f5f9",
-        crosshair: isDark ? "rgba(250, 204, 21, 0.45)" : "rgba(234, 179, 8, 0.5)",
+        wick: "#4b5563",
+        upBorder: "#22c55e",
+        downBorder: "#ef4444",
+        pocBox: "#facc15",
+        pocFill: "rgba(250, 204, 21, 0.12)",
+        numNormal: "#ffffff",
+        numAskImbalance: "#22c55e",
+        numBidImbalance: "#ef4444",
+        numZero: "#94a3b8",
+        multiplierX: "#64748b",
+        deltaBarBg: "#11141e",
+        crosshair: "rgba(250, 204, 21, 0.45)",
       };
 
       // Fill background
@@ -460,11 +476,12 @@ export default function FootprintPage() {
       const compact = width < 720;
       const priceW = compact ? 64 : 78;
       const timeH = 24;
-      const deltaH = showDelta ? (compact ? 32 : 44) : 0;
+      const barChartH = showBarChart ? (compact ? 36 : 48) : 0;
+      const tableChartH = showTableChart ? (compact ? 80 : 96) : 0;
       const left = 6;
       const top = 6;
       const plotW = Math.max(100, width - left - priceW);
-      const plotH = Math.max(100, height - top - deltaH - timeH - 8);
+      const plotH = Math.max(80, height - top - barChartH - tableChartH - timeH - 8);
 
       const visibleBars = bars.slice(
         Math.max(0, Math.floor(view.from)),
@@ -529,7 +546,7 @@ export default function FootprintPage() {
       // =========================================================================
       ctx.save();
       ctx.beginPath();
-      ctx.rect(left, top, plotW, plotH + deltaH + 4);
+      ctx.rect(left, top, plotW, plotH + barChartH + tableChartH + 4);
       ctx.clip();
 
       // Horizontal Grid lines inside plot
@@ -548,7 +565,7 @@ export default function FootprintPage() {
       visibleBars.forEach((_, offset) => {
         const idx = Math.max(0, Math.floor(view.from)) + offset;
         const x = xAt(idx);
-        ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.03)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
         ctx.beginPath();
         ctx.moveTo(x - barW / 2, top);
         ctx.lineTo(x - barW / 2, top + plotH);
@@ -557,7 +574,7 @@ export default function FootprintPage() {
 
       // Developing POC / Session line across the chart
       ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = isDark ? "rgba(250, 204, 21, 0.45)" : "rgba(234, 179, 8, 0.55)";
+      ctx.strokeStyle = "rgba(250, 204, 21, 0.45)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       visibleBars.forEach((bar, offset) => {
@@ -695,7 +712,7 @@ export default function FootprintPage() {
             } else if (isBidImbalanced) {
               ctx.fillStyle = "#ffffff";
             } else {
-              ctx.fillStyle = settings.textNegColor || (isDark ? "#ffffff" : "#0f172a");
+              ctx.fillStyle = settings.textNegColor || "#ffffff";
             }
             ctx.textAlign = settings.textRightAligned ? "right" : "center";
             const bidTextX = settings.textRightAligned ? leftBoxX + leftBoxW - 4 : leftBoxX + leftBoxW / 2;
@@ -714,7 +731,7 @@ export default function FootprintPage() {
             } else if (isAskImbalanced) {
               ctx.fillStyle = "#ffffff";
             } else {
-              ctx.fillStyle = settings.textPosColor || (isDark ? "#ffffff" : "#0f172a");
+              ctx.fillStyle = settings.textPosColor || "#ffffff";
             }
             ctx.textAlign = settings.textRightAligned ? "left" : "center";
             const askTextX = settings.textRightAligned ? rightBoxX + 4 : rightBoxX + rightBoxW / 2;
@@ -723,10 +740,12 @@ export default function FootprintPage() {
         });
       });
 
-      // 4. Lower Delta Bar Chart (if toggled ON)
-      if (showDelta) {
-        const deltaAreaY = height - timeH - deltaH;
-        ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)";
+      let nextSubPanelY = top + plotH + 4;
+
+      // 4A. Lower Delta Bar Chart (if toggled ON)
+      if (showBarChart) {
+        const deltaAreaY = nextSubPanelY;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
         ctx.fillRect(left, deltaAreaY, plotW, 1);
 
         const maxDeltaVol = Math.max(1, ...visibleBars.map((b) => Math.abs(b.buyTrades - b.sellTrades) * 35));
@@ -737,27 +756,151 @@ export default function FootprintPage() {
           const x = xAt(idx);
           const delta = (bar.buyTrades - bar.sellTrades) * 35;
           const isPos = delta >= 0;
-          const barW_sub = Math.max(20, barW * 0.65);
-          const dHeight = Math.min(deltaH - 12, (Math.abs(delta) / maxVolScale) * (deltaH - 12));
+          const barW_sub = Math.max(16, barW * 0.65);
+          const dHeight = Math.min(barChartH - 12, (Math.abs(delta) / maxVolScale) * (barChartH - 12));
 
           // Background box
           ctx.fillStyle = colors.deltaBarBg;
-          ctx.fillRect(x - barW_sub / 2, deltaAreaY, barW_sub, deltaH - 4);
+          ctx.fillRect(x - barW_sub / 2, deltaAreaY, barW_sub, barChartH - 4);
 
           // Delta bar fill
           ctx.fillStyle = isPos ? colors.upBorder : colors.downBorder;
-          const fillY = isPos ? deltaAreaY + (deltaH - 4) / 2 - dHeight : deltaAreaY + (deltaH - 4) / 2;
+          const fillY = isPos ? deltaAreaY + (barChartH - 4) / 2 - dHeight : deltaAreaY + (barChartH - 4) / 2;
           ctx.fillRect(x - barW_sub / 2, fillY, barW_sub, Math.max(2, dHeight));
 
           // Value print
-          if (barW >= 42) {
+          if (barW >= 36) {
             ctx.fillStyle = isPos ? colors.upBorder : colors.downBorder;
             ctx.font = `600 9px monospace`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(`${isPos ? "+" : ""}${formatVol(delta)}`, x, deltaAreaY + deltaH - 10);
+            ctx.fillText(`${isPos ? "+" : ""}${formatVol(delta)}`, x, deltaAreaY + barChartH - 8);
           }
         });
+
+        nextSubPanelY += barChartH + 4;
+      }
+
+      // 4B. Lower Table Chart / Bar Statistics Ribbon (if toggled ON)
+      if (showTableChart) {
+        const tableAreaY = nextSubPanelY;
+        const rowCount = 5;
+        const rowH = (tableChartH - 4) / rowCount;
+        const rowLabels = ["Volume", "Delta", "Max Delta", "Min Delta", "Cum. Delta"];
+        const labelW = compact ? 56 : 72;
+
+        // Precompute cumulative statistics for all bars
+        let runningCum = 0;
+        const statsMap = new Map<number, { vol: number; delta: number; maxD: number; minD: number; cumD: number }>();
+        bars.forEach((b, i) => {
+          const buyV = b.levels.reduce((s, l) => s + l.ask, 0);
+          const sellV = b.levels.reduce((s, l) => s + l.bid, 0);
+          const vol = buyV + sellV;
+          const delta = buyV - sellV;
+
+          let maxD = delta > 0 ? delta : 0;
+          let minD = delta < 0 ? delta : 0;
+          let running = 0;
+          for (let k = b.levels.length - 1; k >= 0; k--) {
+            running += (b.levels[k].ask - b.levels[k].bid);
+            if (running > maxD) maxD = running;
+            if (running < minD) minD = running;
+          }
+          if (maxD === 0 && delta >= 0) maxD = Math.max(Math.floor(buyV * 0.35), delta);
+          if (minD === 0 && delta <= 0) minD = Math.min(-Math.floor(sellV * 0.35), delta);
+
+          runningCum += delta;
+          statsMap.set(i, { vol, delta, maxD, minD, cumD: runningCum });
+        });
+
+        // Base background for table plot area
+        ctx.fillStyle = "#0c0e15";
+        ctx.fillRect(left, tableAreaY, plotW, tableChartH - 4);
+
+        // Clip bar statistical cells inside chart area
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(left + labelW, tableAreaY, plotW - labelW, tableChartH - 4);
+        ctx.clip();
+
+        visibleBars.forEach((_, offset) => {
+          const idx = Math.max(0, Math.floor(view.from)) + offset;
+          const x = xAt(idx);
+          const st = statsMap.get(idx) || { vol: 0, delta: 0, maxD: 0, minD: 0, cumD: 0 };
+          const cellX = x - barW / 2;
+          const cellW = barW;
+
+          // Row 0: Volume (slate grey background)
+          const ry0 = tableAreaY;
+          ctx.fillStyle = "#1e2433";
+          ctx.fillRect(cellX + 0.5, ry0 + 0.5, cellW - 1, rowH - 1);
+          ctx.fillStyle = "#f8fafc";
+          ctx.font = `600 ${barW < 45 ? 8 : 9}px "IBM Plex Mono", Consolas, monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          if (barW >= 20) ctx.fillText(formatVol(st.vol), x, ry0 + rowH / 2);
+
+          // Row 1: Delta (dynamic green/red cell)
+          const ry1 = tableAreaY + rowH;
+          const isDPos = st.delta >= 0;
+          ctx.fillStyle = isDPos ? "rgba(22, 163, 74, 0.85)" : "rgba(220, 38, 38, 0.85)";
+          ctx.fillRect(cellX + 0.5, ry1 + 0.5, cellW - 1, rowH - 1);
+          ctx.fillStyle = "#ffffff";
+          if (barW >= 20) ctx.fillText(`${isDPos ? "+" : ""}${formatVol(st.delta)}`, x, ry1 + rowH / 2);
+
+          // Row 2: Max Delta (dynamic green)
+          const ry2 = tableAreaY + rowH * 2;
+          ctx.fillStyle = "rgba(22, 163, 74, 0.45)";
+          ctx.fillRect(cellX + 0.5, ry2 + 0.5, cellW - 1, rowH - 1);
+          ctx.fillStyle = "#ffffff";
+          if (barW >= 20) ctx.fillText(formatVol(st.maxD), x, ry2 + rowH / 2);
+
+          // Row 3: Min Delta (dynamic red)
+          const ry3 = tableAreaY + rowH * 3;
+          ctx.fillStyle = "rgba(220, 38, 38, 0.45)";
+          ctx.fillRect(cellX + 0.5, ry3 + 0.5, cellW - 1, rowH - 1);
+          ctx.fillStyle = "#ffffff";
+          if (barW >= 20) ctx.fillText(formatVol(st.minD), x, ry3 + rowH / 2);
+
+          // Row 4: Cum. Delta (cumulative session delta)
+          const ry4 = tableAreaY + rowH * 4;
+          const isCumPos = st.cumD >= 0;
+          ctx.fillStyle = isCumPos ? "rgba(22, 163, 74, 0.7)" : "rgba(220, 38, 38, 0.7)";
+          ctx.fillRect(cellX + 0.5, ry4 + 0.5, cellW - 1, rowH - 1);
+          ctx.fillStyle = "#ffffff";
+          if (barW >= 20) ctx.fillText(formatVol(st.cumD), x, ry4 + rowH / 2);
+
+          // Vertical column divider
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+          ctx.beginPath();
+          ctx.moveTo(cellX + cellW, tableAreaY);
+          ctx.lineTo(cellX + cellW, tableAreaY + tableChartH - 4);
+          ctx.stroke();
+        });
+        ctx.restore();
+
+        // Sticky Left Label Sidebar Rail for Table Chart
+        ctx.fillStyle = "#090b11";
+        ctx.fillRect(left, tableAreaY, labelW, tableChartH - 4);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+        ctx.strokeRect(left, tableAreaY, labelW, tableChartH - 4);
+
+        rowLabels.forEach((lbl, rIdx) => {
+          const ry = tableAreaY + rIdx * rowH;
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+          ctx.beginPath();
+          ctx.moveTo(left, ry);
+          ctx.lineTo(left + labelW, ry);
+          ctx.stroke();
+
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = `600 ${compact ? 8 : 8.5}px ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif`;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(lbl, left + 5, ry + rowH / 2);
+        });
+
+        nextSubPanelY += tableChartH + 4;
       }
 
       // 5. Render All Permanent Drawings + Active Live Preview Arrow
@@ -860,7 +1003,7 @@ export default function FootprintPage() {
       // =========================================================================
       // 2. TIME SCALE AXIS (BOTTOM)
       // =========================================================================
-      const timeAxisY = height - 10;
+      const timeAxisY = height - 12;
       ctx.fillStyle = colors.gridText;
       ctx.font = `10px ui-sans-serif, Arial`;
       ctx.textAlign = "center";
@@ -877,13 +1020,13 @@ export default function FootprintPage() {
         const hx = hoverCoord.x;
         if (hx >= left && hx <= left + plotW) {
           const timeStr = formatAxisTime(hoverCoord.time);
-          ctx.fillStyle = isDark ? "#23293a" : "#cbd5e1";
-          ctx.fillRect(hx - 28, top + plotH + 3, 56, 17);
-          ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
+          ctx.fillStyle = "#23293a";
+          ctx.fillRect(hx - 28, timeAxisY - 8, 56, 17);
+          ctx.fillStyle = "#ffffff";
           ctx.font = `bold 9.5px ui-sans-serif, Arial`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(timeStr, hx, top + plotH + 11.5);
+          ctx.fillText(timeStr, hx, timeAxisY);
         }
       }
 
@@ -1014,7 +1157,7 @@ export default function FootprintPage() {
       observer.disconnect();
       wrap.removeEventListener("wheel", onWheel);
     };
-  }, [activeDrawing, bars, clampView, customPriceRange, drawings, hoverCoord, hoveredDrawingId, hoverIndex, imbalanceRatio, instrument.tick, lastBar, settings, showDelta, theme, tool, view, zoom]);
+  }, [activeDrawing, bars, clampView, customPriceRange, drawings, hoverCoord, hoveredDrawingId, hoverIndex, imbalanceRatio, instrument.tick, lastBar, settings, showBarChart, showTableChart, tool, view, zoom]);
 
   // Distance from point (px, py) to line segment (x1, y1) -> (x2, y2)
   const distToSegment = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
@@ -1208,9 +1351,9 @@ export default function FootprintPage() {
       setActiveDrawing((prev) =>
         prev
           ? {
-              ...prev,
-              end: { x: mouseX, y: mouseY, price, index: idx, time },
-            }
+            ...prev,
+            end: { x: mouseX, y: mouseY, price, index: idx, time },
+          }
           : null
       );
       return;
@@ -1274,7 +1417,7 @@ export default function FootprintPage() {
   const pocLevel = activeBar.levels.reduce((best, l) => (l.bid + l.ask > best.bid + best.ask ? l : best), activeBar.levels[0]);
 
   return (
-    <div className={`fp-page theme-${theme}`}>
+    <div className="fp-page theme-dark">
       {/* Top Professional Navigation Header */}
       <header className="fp-header">
         <div className="fp-header-left">
@@ -1324,18 +1467,63 @@ export default function FootprintPage() {
             <span>Bid × Ask Footprint</span>
           </div>
 
-          {/* Bar Chart Checkbox Toggle */}
-          <label className={`fp-checkbox-pill${showDelta ? " is-active" : ""}`} title="Toggle Lower Bar Chart">
-            <input
-              type="checkbox"
-              checked={showDelta}
-              onChange={(e) => setShowDelta(e.target.checked)}
-            />
-            <span>Bar Chart</span>
-          </label>
+          {/* Charts Dropdown Selector */}
+          <div className="fp-charts-dropdown-wrapper" ref={chartsDropdownRef}>
+            <button
+              type="button"
+              className={`fp-charts-dropdown-btn${isChartsDropdownOpen ? " is-open" : ""}${showBarChart || showTableChart ? " is-active" : ""}`}
+              onClick={() => setIsChartsDropdownOpen(!isChartsDropdownOpen)}
+              title="Select Sub-Chart Panels"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+              <span>Charts</span>
+              {(showBarChart || showTableChart) && (
+                <span className="fp-charts-count">
+                  {(showBarChart ? 1 : 0) + (showTableChart ? 1 : 0)}
+                </span>
+              )}
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" className={`fp-charts-chevron${isChartsDropdownOpen ? " is-open" : ""}`}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {isChartsDropdownOpen && (
+              <div className="fp-charts-menu">
+                <div className="fp-charts-menu-header">Secondary Charts</div>
+
+                <label className={`fp-charts-menu-item${showBarChart ? " is-selected" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={showBarChart}
+                    onChange={(e) => setShowBarChart(e.target.checked)}
+                  />
+                  <div className="fp-charts-item-info">
+                    <span className="fp-charts-item-title">Bar Chart</span>
+                    <span className="fp-charts-item-desc">Delta volume histogram</span>
+                  </div>
+                </label>
+
+                <label className={`fp-charts-menu-item${showTableChart ? " is-selected" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={showTableChart}
+                    onChange={(e) => setShowTableChart(e.target.checked)}
+                  />
+                  <div className="fp-charts-item-info">
+                    <span className="fp-charts-item-title">Table Chart</span>
+                    <span className="fp-charts-item-desc">Bar statistics ribbon</span>
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Action Controls & Theme Toggle */}
+        {/* Action Controls */}
         <div className="fp-header-right">
           {/* Settings Trigger Icon Button */}
           <button
@@ -1350,27 +1538,6 @@ export default function FootprintPage() {
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
             <span className="fp-settings-text">Settings</span>
-          </button>
-
-          {/* Dark / Light Theme Switcher */}
-          <button
-            type="button"
-            className="fp-theme-toggle"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            aria-label="Toggle Theme"
-            title={theme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
-          >
-            {theme === "dark" ? (
-              <>
-                <span className="fp-theme-icon">☀️</span>
-                <span className="fp-theme-label">Light</span>
-              </>
-            ) : (
-              <>
-                <span className="fp-theme-icon">🌙</span>
-                <span className="fp-theme-label">Dark</span>
-              </>
-            )}
           </button>
 
           <div className="fp-trade-actions">
@@ -1562,14 +1729,26 @@ export default function FootprintPage() {
           >
             Imbalance {imbalanceRatio * 100}%
           </button>
-          <label className={`fp-toggle-pill fp-footer-check${showDelta ? " is-active" : ""}`} title="Toggle Lower Bar Chart">
+          {/* Bar Chart Pill */}
+          <label className={`fp-toggle-pill fp-footer-check${showBarChart ? " is-active" : ""}`} title="Toggle Lower Bar Chart">
             <input
               type="checkbox"
-              checked={showDelta}
-              onChange={(e) => setShowDelta(e.target.checked)}
+              checked={showBarChart}
+              onChange={(e) => setShowBarChart(e.target.checked)}
               style={{ marginRight: 5, accentColor: "var(--fp-accent)", cursor: "pointer" }}
             />
             Bar Chart
+          </label>
+
+          {/* Table Chart Pill */}
+          <label className={`fp-toggle-pill fp-footer-check${showTableChart ? " is-active" : ""}`} title="Toggle Bar Statistics Table">
+            <input
+              type="checkbox"
+              checked={showTableChart}
+              onChange={(e) => setShowTableChart(e.target.checked)}
+              style={{ marginRight: 5, accentColor: "var(--fp-accent)", cursor: "pointer" }}
+            />
+            Table Chart
           </label>
           <button
             type="button"
