@@ -258,6 +258,7 @@
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -561,6 +562,7 @@
     opacity: 0;
     transform: translate(-50%, -6px);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, 0);
@@ -875,8 +877,13 @@
 }
 
 @keyframes fpFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .fp-settings-drawer {
@@ -1131,6 +1138,7 @@
 }
 
 @media (max-width: 768px) {
+
   /* Mobile: Bottom-to-Top Drawer Slide */
   .fp-settings-drawer {
     top: auto;
@@ -1158,87 +1166,134 @@
   }
 }
 
+.fp-btn-short {
+  display: none;
+}
+.fp-btn-full {
+  display: inline;
+}
+
 @media (max-width: 680px) {
   .fp-header {
-    height: 44px;
-    padding: 0 6px;
+    height: 42px;
+    padding: 0 4px;
     flex-wrap: nowrap;
     gap: 4px;
     justify-content: space-between;
+    overflow: hidden;
   }
 
   .fp-header-left {
     gap: 4px;
     flex: 0 1 auto;
     min-width: 0;
+    align-items: center;
+    overflow: hidden;
   }
 
   .fp-logo {
     width: 22px;
     height: 22px;
+    flex-shrink: 0;
+  }
+
+  .fp-symbol-selector {
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .fp-symbol-selector select {
-    max-width: 82px;
+    max-width: 76px;
     height: 26px;
-    font-size: 10.5px;
-    padding: 0 4px;
+    font-size: 10px;
+    padding: 0 3px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   .fp-tf-pills {
     display: none;
   }
 
-  .fp-checkbox-pill {
-    display: inline-flex !important;
+  .fp-view-badge {
+    display: none;
+  }
+
+  .fp-charts-dropdown-wrapper {
+    flex-shrink: 0;
+  }
+
+  .fp-charts-dropdown-btn {
     height: 26px;
     padding: 0 5px;
     font-size: 10px;
     gap: 3px;
-    flex-shrink: 0;
-    white-space: nowrap;
   }
 
-  .fp-checkbox-pill input[type="checkbox"] {
-    width: 12px;
-    height: 12px;
+  .fp-charts-count {
+    min-width: 14px;
+    height: 14px;
+    font-size: 9px;
   }
 
   .fp-header-right {
+    display: flex;
+    align-items: center;
     gap: 3px;
     margin-left: auto;
     flex-shrink: 0;
   }
 
   .fp-settings-toggle-btn {
+    display: inline-flex !important;
     height: 26px;
     width: 26px;
     padding: 0;
+    align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+  }
+
+  .fp-settings-toggle-btn svg {
+    width: 15px;
+    height: 15px;
   }
 
   .fp-settings-text {
     display: none;
   }
 
-
-
   .fp-trade-actions {
+    display: flex;
     gap: 2px;
+    flex-shrink: 0;
   }
 
   .fp-btn-buy,
   .fp-btn-sell {
     height: 26px;
-    padding: 0 5px;
+    padding: 0 6px;
     font-size: 10px;
     font-weight: 700;
+  }
+
+  .fp-btn-full {
+    display: none;
+  }
+
+  .fp-btn-short {
+    display: inline;
   }
 
   .fp-user-avatar {
     width: 24px;
     height: 24px;
     font-size: 10px;
+    flex-shrink: 0;
   }
 
   .fp-workspace {

@@ -1542,10 +1542,12 @@ export default function FootprintPage() {
 
           <div className="fp-trade-actions">
             <button type="button" className="fp-btn-buy">
-              Buy MKT
+              <span className="fp-btn-full">Buy MKT</span>
+              <span className="fp-btn-short">Buy</span>
             </button>
             <button type="button" className="fp-btn-sell">
-              Sell MKT
+              <span className="fp-btn-full">Sell MKT</span>
+              <span className="fp-btn-short">Sell</span>
             </button>
           </div>
 
